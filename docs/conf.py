@@ -14,7 +14,11 @@ release = '0.0.0-init'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx_rtd_theme']
+extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.githubpages',
+            #   'sphinx.ext.linkcode',
+            #   'sphinx.ext.napoleon',
+              ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
