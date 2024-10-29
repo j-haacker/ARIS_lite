@@ -16,13 +16,12 @@ release = '0.0.0-init'
 
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.githubpages',
-            #   'sphinx.ext.linkcode',
-            #   'sphinx.ext.napoleon',
+              # 'sphinx.ext.linkcode',
+              # 'sphinx.ext.napoleon',
               ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
 
 
 # -- Options for HTML output -------------------------------------------------
