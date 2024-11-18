@@ -53,11 +53,11 @@ class Kc_condition:
         ).all("temporary_dimension")
 
 
-def conditional_cummulative_temperature(temperature: xr.DataArray,
-                                        start_month: int,
-                                        threshold: float,
-                                        timesteps_above_threshold: int = 5,
-                                        ) -> xr.DataArray:
+def conditional_cumulative_temperature(temperature: xr.DataArray,
+                                       start_month: int,
+                                       threshold: float,
+                                       timesteps_above_threshold: int = 5,
+                                       ) -> xr.DataArray:
     # TODO add docstring
     return xr.where(
         np.logical_and(
@@ -95,10 +95,10 @@ def calculate_Kc_factors(temperature,
     before_out_season = Kc_condition_atom(operator.lt, pd.Timestamp(month=12, day=1, year=999))
     out_season = Kc_condition_atom(operator.ge, pd.Timestamp(month=12, day=1, year=999))
 
-    cumT_5 = conditional_cummulative_temperature(temperature, start_month=3, threshold=5,
-                                                 timesteps_above_threshold=5)
-    cumT_8 = conditional_cummulative_temperature(temperature, start_month=4, threshold=8,
-                                                 timesteps_above_threshold=5)
+    cumT_5 = conditional_cumulative_temperature(temperature, start_month=3, threshold=5,
+                                                timesteps_above_threshold=5)
+    cumT_8 = conditional_cumulative_temperature(temperature, start_month=4, threshold=8,
+                                                timesteps_above_threshold=5)
 
     out = []
     for crop in crop_list:
