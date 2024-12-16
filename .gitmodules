@@ -1,0 +1,3 @@
+[submodule "snowMAUS"]
+	path = snowMAUS
+	url = git@github.com:j-haacker/snowMAUS.git
