@@ -1,15 +1,19 @@
 # TODO add module discription
 
-import operator
+from dask import array as dask_arr
 import numpy as np
+import operator
+import os
 import pandas as pd
+import sys
 import xarray as xr
 
 
 __all__ = [
-    "calculate_Kc_factors",
+    "compute_phenology_variables",
     "conditional_cumulative_temperature",
     "build_Kc_factor_array",
+    "build_plant_height_array",
     "Kc_condition",
     "Kc_condition_atom",
 ]
@@ -71,25 +75,40 @@ def conditional_cumulative_temperature(temperature: xr.DataArray,
         ), temperature-threshold, 0).cumsum("time")
 
 
+def apply_condition_value_list(condition_value_list: list[tuple["Kc_condition", float]],
+                               arr: xr.DataArray,
+                               ) -> xr.DataArray:
+    # TODO add docstring (note: Think: FIFO stack. As a consequence, later values override previous.)
+    out = xr.DataArray(np.nan, coords=arr.coords)
+    for cond, val in condition_value_list:
+        out = xr.where(cond.compare(arr), val, out)
+    return out
+
+
 def build_Kc_factor_array(Kc_factor_defs: list[tuple["Kc_condition", float]],
                           cumT: xr.DataArray,
                           ) -> xr.DataArray:
-    # TODO add docstring (note: Think: FIFO stack. As a consequence, later values override previous.)
-    out = xr.DataArray(np.nan, coords=cumT.coords)
-    for cond, val in Kc_factor_defs:
-        out = xr.where(cond.compare(cumT), val, out)
-    return out.chunk(dict(time=-1)).interpolate_na("time", "linear")
+    return apply_condition_value_list(Kc_factor_defs, cumT).interpolate_na("time", "linear")
 
 
-def calculate_Kc_factors(temperature,
-                         crop_list: list[str] = None,
-                         ) -> xr.Dataset:
+def build_plant_height_array(plant_height_defs: list[tuple["Kc_condition", float]],
+                             cumT: xr.DataArray,
+                             ) -> xr.DataArray:
+    return apply_condition_value_list(plant_height_defs, cumT).fillna(0)
+
+
+def compute_phenology_variables(temperature: xr.DataArray,
+                                crop_list: list[str] = None,
+                                ) -> xr.Dataset:
     # TODO add docstring
+
+    # all of winter wheat, spring barley, grain maize, potato, soybeans and a grassland (mähwiese)
+    # need to be included
 
     # TODO CRS should be adopted from coords
 
     if crop_list is None:
-        crop_list = ["winter wheat", "spring barley", "maize"]
+        crop_list = ["winter wheat", "spring barley", "maize", "grassland"]
 
     before_growing_season = Kc_condition_atom(operator.eq, 0)
     before_out_season = Kc_condition_atom(operator.lt, pd.Timestamp(month=12, day=1, year=999))
@@ -100,7 +119,8 @@ def calculate_Kc_factors(temperature,
     cumT_8 = conditional_cumulative_temperature(temperature, start_month=4, threshold=8,
                                                 timesteps_above_threshold=5)
 
-    out = []
+    Kc_factor_da_list = []
+    plant_height_da_list = []
     for crop in crop_list:
         if crop == "winter wheat":
             mid_season_start_cumT = 350
@@ -134,6 +154,7 @@ def calculate_Kc_factors(temperature,
                 [630, 710, 710, 750]
             ]]
             group_output_collector = []
+            group_output_collector2 = []
             try:
                 for label, group in cumT_5.groupby_bins(  # FIXME wrap in .map_blocks if chunked
                     cumT_5.sel(time=f"{cumT_5.time[0].dt.year.values}-11-30"),
@@ -155,18 +176,26 @@ def calculate_Kc_factors(temperature,
                         (out_season, Kc_out_val)
                     ])
                     group_output_collector.append(build_Kc_factor_array(Kc_factor_periods, group))
-                out.append(xr.concat(group_output_collector, "stacked_y_x").sortby("stacked_y_x")
-                             .unstack().reindex_like(cumT_5).rename(crop.replace(" ", "_")))
+                    end_season = Kc_condition([Kc_condition_atom(operator.ge, tmp_EGS+pd.Timedelta(days=1)),
+                                               before_out_season])
+                    group_output_collector2.append(build_plant_height_array([(end_season, 0.2)], group))
+                Kc_factor_da_list.append(xr.concat(group_output_collector, "stacked_y_x").sortby("stacked_y_x")
+                                           .unstack().reindex_like(cumT_5).rename(crop.replace(" ", "_")))
+                plant_height_da_list.append(xr.concat(group_output_collector2, "stacked_y_x").sortby("stacked_y_x")
+                                              .unstack().reindex_like(cumT_5).rename(crop.replace(" ", "_")))
             except ValueError as err:
                 if str(err).startswith("None of the data falls within bins with edges"):
-                    out.append(xr.DataArray(np.nan, coords=cumT_5.coords)
-                                 .rename(crop.replace(" ", "_")))
+                    Kc_factor_da_list.append(xr.DataArray(np.nan, coords=cumT_5.coords)
+                                               .rename(crop.replace(" ", "_")))
+                    plant_height_da_list.append(xr.DataArray(np.nan, coords=cumT_5.coords)
+                                                  .rename(crop.replace(" ", "_")))
                 else:
                     raise err
             finally:
                 continue
         else:
             print(f"! WARNING: requested crop {crop} was not recognized and is skipped.")
+            continue
 
         after_mid_season_start = Kc_condition_atom(operator.ge, mid_season_start_cumT)
         before_mid_season_end = Kc_condition_atom(operator.le, mid_season_end_cumT)
@@ -175,9 +204,11 @@ def calculate_Kc_factors(temperature,
         EGS_date = EGS_date.where(EGS_date > pd.Timestamp(month=3, day=1,
                                                           year=cumT.time[0].dt.year.values))
         before_EGS = Kc_condition_atom(operator.lt, EGS_date+pd.Timedelta(days=1))
+        after_EGS = Kc_condition_atom(operator.ge, EGS_date+pd.Timedelta(days=1))
         mid_season = Kc_condition([after_mid_season_start, before_EGS])
-        after_late_start = Kc_condition_atom(operator.ge, EGS_date+pd.Timedelta(days=15))
-        end_season = Kc_condition([after_late_start, before_out_season])
+        late_and_end_season = Kc_condition([after_EGS, before_out_season])
+        after_late_end = Kc_condition_atom(operator.ge, EGS_date+pd.Timedelta(days=15))
+        end_season = Kc_condition([after_late_end, before_out_season])
 
         Kc_factor_periods = [
             (before_growing_season, .4),
@@ -185,8 +216,72 @@ def calculate_Kc_factors(temperature,
             (end_season, .5),
             (out_season, .4)
         ]
-        out.append(
+        Kc_factor_da_list.append(
             build_Kc_factor_array(Kc_factor_periods, cumT).rename(crop.replace(" ", "_"))
         )
 
-    return xr.concat(out, "crop").assign_coords(crop=crop_list).rename("Kc_factor")
+        if crop in ["winter wheat", "spring barley"]:
+            plant_height_periods = [(mid_season, 1),
+                                    (late_and_end_season, .2)]
+        elif crop == "maize":
+            plant_height_periods = [(mid_season, 2),
+                                    (late_and_end_season, .2)]
+        elif crop == "grassland":
+            plant_height_periods = [(end_season, .2)]
+        else:
+            raise Exception("If you see this error, implement plant height for missing crop.")
+        plant_height_da_list.append(
+            build_plant_height_array(plant_height_periods, cumT).rename(crop.replace(" ", "_"))
+        )
+
+    Kc_factor_da_list = xr.concat(Kc_factor_da_list, "crop").assign_coords(crop=crop_list).rename("Kc_factor")
+    plant_height_da_list = xr.concat(plant_height_da_list, "crop").assign_coords(crop=crop_list).rename("plant_height")
+    out = xr.merge([Kc_factor_da_list, plant_height_da_list])
+    # print(out, flush=True)
+    # raise
+    return out
+
+
+def main(year: int,
+         crop_list: list = None) -> None:
+    if crop_list is None:
+        crop_list = ["winter wheat", "spring barley", "maize", "grassland"]
+    print("Calculating phenology variables for year", year, "and crops", crop_list)
+    T2m = xr.open_zarr(f"../data/input/{year}.zarr", decode_coords="all").air_temperature
+    template = xr.DataArray(dask_arr.zeros(shape=(len(crop_list), *T2m.shape), dtype="f4"),
+                            coords=T2m.expand_dims({"crop": crop_list}).coords)\
+                 .chunk(dict(crop=-1, time=-1, x=41, y=37))
+    template = xr.merge([template.rename("Kc_factor"),
+                         template.rename("plant_height")
+                         ])
+    T2m.map_blocks(lambda x: compute_phenology_variables(x, crop_list), template=template)\
+       .drop_encoding().to_zarr(f"../data/intermediate/{year}.zarr", mode="a-")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        year_list = []
+        for arg in sys.argv[1:]:
+            try:
+                year_list.append(int(arg))
+                assert year_list[-1] > 1900
+                assert year_list[-1] < 2300
+            except (ValueError, AssertionError):
+                print(f"! WARNING: {arg} is not a valid year. Skipping.")
+                continue
+        print("Requested years:", year_list)
+    else:
+        year_list = [2020, 2021, 2023]
+        print("Processing default year list:", year_list)
+    from dask.distributed import LocalCluster, Client
+    client = Client(LocalCluster(4, memory_limit="6.7Gb"))
+    print(client.dashboard_link)
+    try:
+        for year in year_list:
+            if os.path.isdir(f"../data/intermediate/{year}.zarr"):
+                print(f"! WARNING: {year}.zarr already exists. Skipping.")
+                continue
+            main(year)
+    finally:
+        client.close()
+        print("Client closed.")
