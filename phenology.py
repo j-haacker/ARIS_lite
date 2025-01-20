@@ -78,7 +78,8 @@ def conditional_cumulative_temperature(temperature: xr.DataArray,
 def apply_condition_value_list(condition_value_list: list[tuple["Kc_condition", float]],
                                arr: xr.DataArray,
                                ) -> xr.DataArray:
-    # TODO add docstring (note: Think: FIFO stack. As a consequence, later values override previous.)
+    # TODO add docstring (note: Think: FIFO stack. As a consequence, later
+    # values override previous.)
     out = xr.DataArray(np.nan, coords=arr.coords)
     for cond, val in condition_value_list:
         out = xr.where(cond.compare(arr), val, out)
@@ -176,13 +177,17 @@ def compute_phenology_variables(temperature: xr.DataArray,
                         (out_season, Kc_out_val)
                     ])
                     group_output_collector.append(build_Kc_factor_array(Kc_factor_periods, group))
-                    end_season = Kc_condition([Kc_condition_atom(operator.ge, tmp_EGS+pd.Timedelta(days=1)),
-                                               before_out_season])
-                    group_output_collector2.append(build_plant_height_array([(end_season, 0.2)], group))
-                Kc_factor_da_list.append(xr.concat(group_output_collector, "stacked_y_x").sortby("stacked_y_x")
-                                           .unstack().reindex_like(cumT_5).rename(crop.replace(" ", "_")))
-                plant_height_da_list.append(xr.concat(group_output_collector2, "stacked_y_x").sortby("stacked_y_x")
-                                              .unstack().reindex_like(cumT_5).rename(crop.replace(" ", "_")))
+                    end_season = Kc_condition([
+                        Kc_condition_atom(operator.ge, tmp_EGS+pd.Timedelta(days=1)),
+                        before_out_season])
+                    group_output_collector2.append(build_plant_height_array([(end_season, 0.2)],
+                                                                            group))
+                Kc_factor_da_list.append(xr.concat(group_output_collector, "stacked_y_x")
+                                           .sortby("stacked_y_x").unstack().reindex_like(cumT_5)
+                                           .rename(crop.replace(" ", "_")))
+                plant_height_da_list.append(xr.concat(group_output_collector2, "stacked_y_x")
+                                              .sortby("stacked_y_x").unstack().reindex_like(cumT_5)
+                                              .rename(crop.replace(" ", "_")))
             except ValueError as err:
                 if str(err).startswith("None of the data falls within bins with edges"):
                     Kc_factor_da_list.append(xr.DataArray(np.nan, coords=cumT_5.coords)
@@ -234,8 +239,10 @@ def compute_phenology_variables(temperature: xr.DataArray,
             build_plant_height_array(plant_height_periods, cumT).rename(crop.replace(" ", "_"))
         )
 
-    Kc_factor_da_list = xr.concat(Kc_factor_da_list, "crop").assign_coords(crop=crop_list).rename("Kc_factor")
-    plant_height_da_list = xr.concat(plant_height_da_list, "crop").assign_coords(crop=crop_list).rename("plant_height")
+    Kc_factor_da_list = xr.concat(Kc_factor_da_list, "crop").assign_coords(crop=crop_list)\
+                          .rename("Kc_factor")
+    plant_height_da_list = xr.concat(plant_height_da_list, "crop").assign_coords(crop=crop_list)\
+                             .rename("plant_height")
     out = xr.merge([Kc_factor_da_list, plant_height_da_list])
     # print(out, flush=True)
     # raise
