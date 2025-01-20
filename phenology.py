@@ -141,7 +141,7 @@ def compute_phenology_variables(temperature: xr.DataArray,
             #   2) all cut strategies only differ slightly in their end temperature sums
             Kc_out_val = 0.2
             Kc_ini_val = 0.4
-            # because the definde thresholds result in no grassland at all, I use imaginary values
+            # because the defined thresholds result in no grassland at all, I use imaginary values
             # for testing
             # cumTs = [np.cumsum(thresholds) for thresholds in [
             #     [1170, 1800],
