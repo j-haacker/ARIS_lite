@@ -5,6 +5,14 @@ import xarray as xr
 import numpy as np
 
 
+__all__ = [
+    "main_combined_stress",
+    "main_yield",
+    "calc_combined_stress",
+    "calc_yield",
+]
+
+
 def calc_combined_stress(ds) -> xr.DataArray:
     combined_stress = ds.waterstress.where(False)
     for i in range(combined_stress.shape[0]):
@@ -90,23 +98,23 @@ if __name__ == "__main__":
                         choices=["stress", "yield", "both", "auto"],
                         default="auto",
                         help="choose whether to compute stress, yield, or both")
-    parser.add_argument("year", type=int, nargs="*",
+    parser.add_argument("years", type=int, nargs="*",
                         default=[2020, 2021, 2023],
                         help="list years to compute")
     parser.add_argument("--workers", type=int, default=4, help="number of dask workers")
     parser.add_argument("--mem-per-worker", type=str, default="1Gb",
                         help="memory per worker, e.g. \"5.67Gb\"")
     args = parser.parse_args()
-    args.year = sorted(args.year)
+    args.years = sorted(args.years)
 
     if args.mode == "auto":
-        if all(os.path.isdir(f"../data/intermediate/csi_{year}.zarr") for year in args.year):
+        if all(os.path.isdir(f"../data/intermediate/csi_{year}.zarr") for year in args.years):
             print("Stress index is present, assuming you want to have the yield expectations "
                   "computed.")
             args.mode = "yield"
         else:
             print("Stress index is missing for year(s):",
-                  ", ".join([str(year) for year in args.year
+                  ", ".join([str(year) for year in args.years
                              if not os.path.isdir(f"../data/intermediate/snow_{year}.zarr")])+".",
                   "Computing these first before estimating the yield.")
             args.mode = "both"
@@ -118,8 +126,8 @@ if __name__ == "__main__":
 
     try:
         if args.mode in ["stress", "both"]:
-            main_combined_stress(args.year)
-        main_yield(args.year)
+            main_combined_stress(args.years)
+        main_yield(args.years)
     except (FileNotFoundError, ) as err:
         if str(err).startswith("Unable to find group"):
             print("\n! ERROR: data missing. Verify that the necessary data are available.\n")

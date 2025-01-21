@@ -8,6 +8,14 @@ from typing import Iterable
 from snowMAUS import snowmaus
 
 
+__all__ = [
+    "main_snow",
+    "main_soil_water",
+    "calc_snow",
+    "calc_soil_water",
+]
+
+
 def calc_snow(ds):
     if ds.precipitation.isnull().all():
         template = xr.DataArray(
@@ -172,23 +180,23 @@ if __name__ == "__main__":
                         choices=["snow", "soil", "auto"],
                         default="auto",
                         help="choose which part of the water budget to compute")
-    parser.add_argument("year", type=int, nargs="*",
+    parser.add_argument("years", type=int, nargs="*",
                         default=[2020, 2021, 2023],
                         help="list years to compute")
     parser.add_argument("--workers", type=int, default=4, help="number of dask workers")
     parser.add_argument("--mem-per-worker", type=str, default="2Gb",
                         help="memory per worker, e.g. \"5.67Gb\"")
     args = parser.parse_args()
-    args.year = sorted(args.year)
+    args.years = sorted(args.years)
 
     if args.mode == "auto":
-        if all(os.path.isdir(f"../data/intermediate/snow_{year}.zarr") for year in args.year):
+        if all(os.path.isdir(f"../data/intermediate/snow_{year}.zarr") for year in args.years):
             print("Snow related variables are present, assuming you mean to have the soil part "
                   "of the water budget computed")
             args.mode = "soil"
         else:
             print("Snow related variables are missing for year(s):",
-                  ", ".join([str(year) for year in args.year
+                  ", ".join([str(year) for year in args.years
                              if not os.path.isdir(f"../data/intermediate/snow_{year}.zarr")])+".",
                   "Computing these now.")
             args.mode = "snow"
@@ -200,9 +208,9 @@ if __name__ == "__main__":
 
     try:
         if args.mode == "snow":
-            main_snow(args.year)
+            main_snow(args.years)
         else:
-            main_soil_water(args.year)
+            main_soil_water(args.years)
     except (FileNotFoundError, ) as err:
         if str(err).startswith("Unable to find group"):
             print("\n! ERROR: data missing. Verify that the necessary data are available.\n")
@@ -217,5 +225,5 @@ if __name__ == "__main__":
         print("Continue by computing the crop coefficients (needed to calculate the "
               "evapotranspiration later) by running\n\t`python phenology.py [year1 ...]`\n")
     else:
-        print("Continue by computing the expected yield by running\n\t`python xxxxxx.py "
-              "[year1 ...]`\n")
+        print("Continue by computing the expected yield by running\n\t`python "
+              "yield_expectation.py [year1 ...]`\n")

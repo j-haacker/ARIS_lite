@@ -1,21 +1,16 @@
-# TODO add module discription
-
+#!/usr/bin/env python
 from dask import array as dask_arr
 import numpy as np
 import operator
 import os
 import pandas as pd
-import sys
+from typing import Iterable
 import xarray as xr
 
 
 __all__ = [
+    "main",
     "compute_phenology_variables",
-    "conditional_cumulative_temperature",
-    "build_Kc_factor_array",
-    "build_plant_height_array",
-    "Kc_condition",
-    "Kc_condition_atom",
 ]
 
 
@@ -26,11 +21,11 @@ class Kc_condition_atom:
         self.value = value
 
     @property
-    def is_temporal(self):
+    def is_temporal(self) -> bool:
         return (isinstance(self.value, pd.Timestamp)
                 or pd.api.types.is_datetime64_any_dtype(self.value))
 
-    def compare(self, other: xr.DataArray):
+    def compare(self, other: xr.DataArray) -> xr.DataArray:
         if self.is_temporal:
             years = np.unique(other.time.dt.year)
             assert years.shape == (1,)  # implement handling longer time series if relevant
@@ -49,7 +44,7 @@ class Kc_condition:
     def __init__(self, condition_tuple: tuple["Kc_condition_atom"]):
         self.condition_tuple = condition_tuple
 
-    def compare(self, other: xr.DataArray):
+    def compare(self, other: xr.DataArray) -> xr.DataArray:
         # True if all conditions met
         return xr.concat(
             [condition_atom.compare(other) for condition_atom in self.condition_tuple],
@@ -249,46 +244,53 @@ def compute_phenology_variables(temperature: xr.DataArray,
     return out
 
 
-def main(year: int,
+def main(years: Iterable[int],
          crop_list: list = None) -> None:
     if crop_list is None:
         crop_list = ["winter wheat", "spring barley", "maize", "grassland"]
-    print("Calculating phenology variables for year", year, "and crops", crop_list)
-    T2m = xr.open_zarr(f"../data/input/{year}.zarr", decode_coords="all").air_temperature
-    template = xr.DataArray(dask_arr.zeros(shape=(len(crop_list), *T2m.shape), dtype="f4"),
-                            coords=T2m.expand_dims({"crop": crop_list}).coords)\
-                 .chunk(dict(crop=-1, time=-1, x=41, y=37))
-    template = xr.merge([template.rename("Kc_factor"),
-                         template.rename("plant_height")
-                         ])
-    T2m.map_blocks(lambda x: compute_phenology_variables(x, crop_list), template=template)\
-       .drop_encoding().to_zarr(f"../data/intermediate/{year}.zarr", mode="a-")
+    for year in years:
+        if os.path.isdir(f"../data/intermediate/{year}.zarr"):
+            print(f"! WARNING: {year}.zarr already exists. Skipping.")
+            continue
+        print("Calculating phenology variables for year", year, "and crops", crop_list)
+        T2m = xr.open_zarr(f"../data/input/{year}.zarr", decode_coords="all").air_temperature
+        template = xr.DataArray(dask_arr.zeros(shape=(len(crop_list), *T2m.shape), dtype="f4"),
+                                coords=T2m.expand_dims({"crop": crop_list}).coords)\
+                     .chunk(dict(crop=-1, time=-1, x=41, y=37))
+        template = xr.merge([template.rename("Kc_factor"),
+                             template.rename("plant_height")])
+        T2m.map_blocks(lambda x: compute_phenology_variables(x, crop_list), template=template)\
+           .drop_encoding().to_zarr(f"../data/intermediate/{year}.zarr", mode="a-")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        year_list = []
-        for arg in sys.argv[1:]:
-            try:
-                year_list.append(int(arg))
-                assert year_list[-1] > 1900
-                assert year_list[-1] < 2300
-            except (ValueError, AssertionError):
-                print(f"! WARNING: {arg} is not a valid year. Skipping.")
-                continue
-        print("Requested years:", year_list)
-    else:
-        year_list = [2020, 2021, 2023]
-        print("Processing default year list:", year_list)
+    import argparse
+    parser = argparse.ArgumentParser(description="computes stress and/or yield")
+    parser.add_argument("years", type=int, nargs="*",
+                        default=[2020, 2021, 2023],
+                        help="list years to compute")
+    parser.add_argument("--workers", type=int, default=4, help="number of dask workers")
+    parser.add_argument("--mem-per-worker", type=str, default="3Gb",
+                        help="memory per worker, e.g. \"5.67Gb\"")
+    args = parser.parse_args()
+    args.years = sorted(args.years)
+
     from dask.distributed import LocalCluster, Client
-    client = Client(LocalCluster(4, memory_limit="6.7Gb"))
-    print(client.dashboard_link)
+    print("Starting dask")
+    client = Client(LocalCluster(args.workers, memory_limit=args.mem_per_worker))
+    print("... access the dashboard at", client.dashboard_link)
+
     try:
-        for year in year_list:
-            if os.path.isdir(f"../data/intermediate/{year}.zarr"):
-                print(f"! WARNING: {year}.zarr already exists. Skipping.")
-                continue
-            main(year)
+        main(args.years)
+    except (FileNotFoundError, ) as err:
+        if str(err).startswith("Unable to find group"):
+            print("\n! ERROR: data missing. Verify that the necessary data are available.\n")
+            raise
     finally:
         client.close()
-        print("Client closed.")
+        print("Closed dask client\n")
+
+    print("Sucessfully computed phenology related variables!\n")
+
+    print("Continue by computing the soil water by running\n\t`python water_budget.py -m soil"
+          "[year1 ...]`\n")

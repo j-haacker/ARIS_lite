@@ -13,16 +13,41 @@ Integral parts are being developed. At this stage you have to expect
 refactoring!
 
 
+## 🪛 usage
+
+1. `python water_budget.py -m snow 2019 2020 2021 2022 2023`
+2. `python phenology.py`
+3. `python water_budget.py -m soil`
+4. `python yield_expectation.py`
+
+
 ## ✨ features
 
 - calculate water up-take coefficients ("Kc factors") for Winter Wheat,
-  Spring Barley, Maize, and Grassland based on the daily air surface
-  temperature
+    Spring Barley, Maize, and Grassland based on the daily air surface
+    temperature
+- calculate soil water content and evapotranspiration
+- compute daily crop-specific stress index based on maximum surface air temperature and soil water saturation
+- estimate yield expectations based on stress index
+
+
+## 🚀 coming soon
+
+- consistent observable names with ECMWF climate scenario data
+- paths and observable names will be modifiable via a config file
+- pipelines and tutorials will be extended
+
+
+## 🔗 dependencies
+
+- view the environment.yml
+- meteorological data
+- soil water capacity data
 
 
 ## 🐛 known issues
 
-- calculating Grassland Kc_factors requires much memory
+- hard-coded observable names, e.g. "max_air_temp"
 
 
 ## 💸 funding
