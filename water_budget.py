@@ -33,8 +33,8 @@ def calc_snow(ds):
     melt = np.zeros_like(snowfall)
     snowcover = np.zeros_like(snowfall)
     for i in range(snowcover.shape[0]):
-        snowcover[i] -= snowmaus.sublimed_snowcover(
-            snowcover[i-1] if i != 0 else ds.initial_snowcover.values)
+        snowcover[i] = (snowcover[i-1] if i != 0 else ds.initial_snowcover.values)
+        snowcover[i] -= snowmaus.sublimed_snowcover(snowcover[i])
         snowcover[i] += np.where(np.isnan(snowfall[i]), 0, snowfall[i])
         melt[i] = np.where(potential_melt[i] > snowcover[i], snowcover[i], potential_melt[i])
         snowcover[i] -= np.where(np.isnan(melt[i]), 0, melt[i])
