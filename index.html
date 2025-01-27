@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARIS_lite documentation &mdash; ARIS_lite 0.1.0 documentation</title>
+  <title>ARIS_lite package &mdash; ARIS_lite 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
@@ -42,7 +42,30 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <!-- Local TOC -->
               <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">ARIS_lite documentation</a></li>
+<li><a class="reference internal" href="#">ARIS_lite package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-ARIS_lite.phenology">ARIS_lite.phenology module</a><ul>
+<li><a class="reference internal" href="#ARIS_lite.phenology.compute_phenology_variables"><code class="docutils literal notranslate"><span class="pre">compute_phenology_variables()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.phenology.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-ARIS_lite.water_budget">ARIS_lite.water_budget module</a><ul>
+<li><a class="reference internal" href="#ARIS_lite.water_budget.calc_snow"><code class="docutils literal notranslate"><span class="pre">calc_snow()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.water_budget.calc_soil_water"><code class="docutils literal notranslate"><span class="pre">calc_soil_water()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.water_budget.main_snow"><code class="docutils literal notranslate"><span class="pre">main_snow()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.water_budget.main_soil_water"><code class="docutils literal notranslate"><span class="pre">main_soil_water()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-ARIS_lite.yield_expectation">ARIS_lite.yield_expectation module</a><ul>
+<li><a class="reference internal" href="#ARIS_lite.yield_expectation.calc_combined_stress"><code class="docutils literal notranslate"><span class="pre">calc_combined_stress()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.yield_expectation.calc_yield"><code class="docutils literal notranslate"><span class="pre">calc_yield()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.yield_expectation.main_combined_stress"><code class="docutils literal notranslate"><span class="pre">main_combined_stress()</span></code></a></li>
+<li><a class="reference internal" href="#ARIS_lite.yield_expectation.main_yield"><code class="docutils literal notranslate"><span class="pre">main_yield()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-ARIS_lite">Module contents</a></li>
+</ul>
+</li>
 </ul>
 </div>
         </div>
@@ -59,7 +82,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">ARIS_lite documentation</li>
+      <li class="breadcrumb-item active">ARIS_lite package</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -69,13 +92,192 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="aris-lite-documentation">
-<h1>ARIS_lite documentation<a class="headerlink" href="#aris-lite-documentation" title="Link to this heading"></a></h1>
-<p>Add your content using <code class="docutils literal notranslate"><span class="pre">reStructuredText</span></code> syntax. See the
-<a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html">reStructuredText</a>
-documentation for details.</p>
-<div class="toctree-wrapper compound">
-</div>
+  <section id="aris-lite-package">
+<h1>ARIS_lite package<a class="headerlink" href="#aris-lite-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ARIS_lite.phenology">
+<span id="aris-lite-phenology-module"></span><h2>ARIS_lite.phenology module<a class="headerlink" href="#module-ARIS_lite.phenology" title="Link to this heading"></a></h2>
+<p>Phenology module</p>
+<p>This module computes the crop coefficients and plant heights.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.phenology.compute_phenology_variables">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.phenology.</span></span><span class="sig-name descname"><span class="pre">compute_phenology_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crop_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('winter</span> <span class="pre">wheat',</span> <span class="pre">'spring</span> <span class="pre">barley',</span> <span class="pre">'maize',</span> <span class="pre">'grassland')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="headerlink" href="#ARIS_lite.phenology.compute_phenology_variables" title="Link to this definition"></a></dt>
+<dd><p>Compute crop coefficients and plant heights</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temperature</strong> (<em>xr.DataArray</em>) – Daily surface air temperature average for one year</p></li>
+<li><p><strong>crop_list</strong> (<em>Iterable</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – List of crops for which to compute, defaults to (“winter
+wheat”, “spring barley”, “maize”, “grassland”)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset containing crop coefficients and plant heights</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.phenology.main">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.phenology.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crop_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('winter</span> <span class="pre">wheat',</span> <span class="pre">'spring</span> <span class="pre">barley',</span> <span class="pre">'maize',</span> <span class="pre">'grassland')</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ARIS_lite.phenology.main" title="Link to this definition"></a></dt>
+<dd><p>Load data, compute phenology, and save output</p>
+<p>Wraps compute_phenology_variables by loading the input data and writing the
+output to a Zarr storage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute</p></li>
+<li><p><strong>crop_list</strong> (<em>Iterable</em><em>, </em><em>optional</em>) – List of crops to compute, defaults to (“winter wheat”, “spring
+barley”, “maize”, “grassland”)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-ARIS_lite.water_budget">
+<span id="aris-lite-water-budget-module"></span><h2>ARIS_lite.water_budget module<a class="headerlink" href="#module-ARIS_lite.water_budget" title="Link to this heading"></a></h2>
+<p>Water budget module</p>
+<p>This module computes:</p>
+<ul class="simple">
+<li><p>the snow/rain fraction</p></li>
+<li><p>the snow cover</p></li>
+<li><p>the evapotranspiration</p></li>
+<li><p>the soil water availability</p></li>
+</ul>
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.water_budget.calc_snow">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">calc_snow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="headerlink" href="#ARIS_lite.water_budget.calc_snow" title="Link to this definition"></a></dt>
+<dd><p>Calculate snowfall and melt</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ds</strong> (<em>xr.Dataset</em>) – Dataset containing variables “precipitation”, “min_air_temp”,
+“max_air_temp”, and “initial_snowcover”</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset containing variables “snowfall”, “meltwater_production”,
+and “snowcover”</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.water_budget.calc_soil_water">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">calc_soil_water</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="headerlink" href="#ARIS_lite.water_budget.calc_soil_water" title="Link to this definition"></a></dt>
+<dd><p>Calculate evapotranspiration and soil water depletion</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ds</strong> (<em>xr.Dataset</em>) – Dataset containing variables “Kc_factor”, “plant_height”,
+“precipitation”, “wind_speed”, “rel_humidity” “pot_evapotransp”,
+“snowfall”, and “meltwater_production”</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset containing variables “evapotranspiration”, “evapo_ETC”, and
+“soil_depletion”</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.water_budget.main_snow">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">main_snow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ARIS_lite.water_budget.main_snow" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write snow related results to Zarr store</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.water_budget.main_soil_water">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">main_soil_water</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ARIS_lite.water_budget.main_soil_water" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write soil related results to Zarr store</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-ARIS_lite.yield_expectation">
+<span id="aris-lite-yield-expectation-module"></span><h2>ARIS_lite.yield_expectation module<a class="headerlink" href="#module-ARIS_lite.yield_expectation" title="Link to this heading"></a></h2>
+<p>Yield module</p>
+<p>Estimates yield based on stress indices</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.yield_expectation.calc_combined_stress">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">calc_combined_stress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataArray</span></span></span><a class="headerlink" href="#ARIS_lite.yield_expectation.calc_combined_stress" title="Link to this definition"></a></dt>
+<dd><p>Calculate combined stress index</p>
+<p>The combined stress index folds the water/drought stress and the heat stress</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ds</strong> (<em>xr.Dataset</em>) – Dataset containing variables “waterstress” and “max_air_temp”</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Combined stress index</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.yield_expectation.calc_yield">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">calc_yield</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataArray</span></span></span><a class="headerlink" href="#ARIS_lite.yield_expectation.calc_yield" title="Link to this definition"></a></dt>
+<dd><p>Estimate yield</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>csi</strong> (<em>xr.DataArray</em>) – Combined stress index</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Yield expectation</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.yield_expectation.main_combined_stress">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">main_combined_stress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ARIS_lite.yield_expectation.main_combined_stress" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write combined stress to Zarr store</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ARIS_lite.yield_expectation.main_yield">
+<span class="sig-prename descclassname"><span class="pre">ARIS_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">main_yield</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ARIS_lite.yield_expectation.main_yield" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write yield expectations to Zarr store</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List years to compute</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-ARIS_lite">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ARIS_lite" title="Link to this heading"></a></h2>
+<p>Implementation of the ARIS(_lite) phenology model</p>
+</section>
 </section>
 
 

@@ -1,18 +1,37 @@
-.. ARIS_lite documentation master file, created by
-   sphinx-quickstart on Mon Oct 14 14:44:46 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+ARIS\_lite package
+==================
 
-ARIS_lite documentation
-=======================
+Submodules
+----------
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+ARIS\_lite.phenology module
+---------------------------
 
-.. ARIS_lite:
+.. automodule:: ARIS_lite.phenology
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+ARIS\_lite.water\_budget module
+-------------------------------
 
+.. automodule:: ARIS_lite.water_budget
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ARIS\_lite.yield\_expectation module
+------------------------------------
+
+.. automodule:: ARIS_lite.yield_expectation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: ARIS_lite
+   :members:
+   :undoc-members:
+   :show-inheritance:
