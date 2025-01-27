@@ -1,0 +1,7 @@
+ARIS_lite
+=========
+
+.. toctree::
+   :maxdepth: 4
+
+   ARIS_lite
