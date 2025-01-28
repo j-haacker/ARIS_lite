@@ -1,4 +1,22 @@
 #!/usr/bin/env python
+
+"""Water budget module
+
+This module computes:
+
+- the snow/rain fraction
+- the snow cover
+- the evapotranspiration
+- the soil water availability
+"""
+
+__all__ = [
+    "main_snow",
+    "main_soil_water",
+    "calc_snow",
+    "calc_soil_water",
+]
+
 import dask.array as dask_arr
 import numpy as np
 import os
@@ -8,15 +26,16 @@ from typing import Iterable
 from snowMAUS import snowmaus
 
 
-__all__ = [
-    "main_snow",
-    "main_soil_water",
-    "calc_snow",
-    "calc_soil_water",
-]
+def calc_snow(ds: xr.Dataset) -> xr.Dataset:
+    """Calculate snowfall and melt
 
-
-def calc_snow(ds):
+    :param ds: Dataset containing variables "precipitation", "min_air_temp",
+        "max_air_temp", and "initial_snowcover"
+    :type ds: xr.Dataset
+    :return: Dataset containing variables "snowfall", "meltwater_production",
+        and "snowcover"
+    :rtype: xr.Dataset
+    """
     if ds.precipitation.isnull().all():
         template = xr.DataArray(
             dask_arr.zeros_like(ds.precipitation, dtype="f4", chunks=(-1, 37, 41)),
@@ -46,7 +65,17 @@ def calc_snow(ds):
                       coords=ds.precipitation.coords)
 
 
-def calc_soil_water(ds):
+def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
+    """Calculate evapotranspiration and soil water depletion
+
+    :param ds: Dataset containing variables "Kc_factor", "plant_height",
+        "precipitation", "wind_speed", "rel_humidity" "pot_evapotransp",
+        "snowfall", and "meltwater_production"
+    :type ds: xr.Dataset
+    :return: Dataset containing variables "evapotranspiration", "evapo_ETC", and
+        "soil_depletion"
+    :rtype: xr.Dataset
+    """
     if ds.Kc_factor.isnull().all():
         template = xr.DataArray(
             dask_arr.zeros(shape=(*ds.Kc_factor.shape, 2),
@@ -90,24 +119,29 @@ def calc_soil_water(ds):
         Ks_i = (1 - D_r.isel(time=i-1)/ds.TAW).values / (1 - p)
         Ks_i = xr.where(Ks_i < 0, 0, xr.where(Ks_i > 1, 1, Ks_i))
         ET[:, i] = Ks_i * ET0.sel(time=t) * Kc_plus_climEff.sel(time=t)
-        toplayerinbalance = incoming_water.sel(time=t)\
+        toplayerimbalance = incoming_water.sel(time=t)\
             - D_r.isel(time=i-1).squeeze().sel(layer="top") - ET.sel(time=t, layer="top")
-        maybe_new_top_layer_value = xr.where(toplayerinbalance < -ds.TAW.sel(layer="top"),
+        maybe_new_top_layer_value = xr.where(toplayerimbalance < -ds.TAW.sel(layer="top"),
                                              ds.TAW.sel(layer="top"),
-                                             -toplayerinbalance)
-        DP = xr.where(toplayerinbalance > 0, toplayerinbalance, 0)
-        sublayerinbalance = DP - D_r.isel(time=i-1).squeeze().sel(layer="sub")\
+                                             -toplayerimbalance)
+        DP = xr.where(toplayerimbalance > 0, toplayerimbalance, 0)
+        sublayerimbalance = DP - D_r.isel(time=i-1).squeeze().sel(layer="sub")\
             - ET.sel(time=t, layer="sub")
-        maybe_new_sub_layer_value = xr.where(sublayerinbalance < -ds.TAW.sel(layer="sub"),
+        maybe_new_sub_layer_value = xr.where(sublayerimbalance < -ds.TAW.sel(layer="sub"),
                                              ds.TAW.sel(layer="sub"),
-                                             -sublayerinbalance)
+                                             -sublayerimbalance)
         potential_depletion = xr.concat([maybe_new_top_layer_value, maybe_new_sub_layer_value],
                                         dim="layer")
         D_r[:, i] = xr.where(potential_depletion < 0, 0, potential_depletion)
     return xr.merge([ET, ETC.rename("evapo_ETC"), D_r])
 
 
-def main_soil_water(years: Iterable[int]) -> None:
+def main_soil_water(years: Iterable[int]):
+    """Load input data and write soil related results to Zarr store
+
+    :param years: List of years to compute
+    :type years: Iterable[int]
+    """
     for year in years:
         if os.path.isdir(f"../data/intermediate/{year}.zarr/soil_depletion"):
             print(f"! WARNING: {year}.zarr/soil_depletion already exists. Skipping.")
@@ -135,7 +169,12 @@ def main_soil_water(years: Iterable[int]) -> None:
         D_r.drop_encoding().to_zarr(f"../data/intermediate/{year}.zarr", mode="a-")
 
 
-def main_snow(years):
+def main_snow(years: Iterable[int]):
+    """Load input data and write snow related results to Zarr store
+
+    :param years: List of years to compute
+    :type years: Iterable[int]
+    """
     for year in years:
         if os.path.isdir(f"../data/intermediate/snow_{year}.zarr"):
             print(f"! WARNING: snow_{year}.zarr already exists. Skipping.")
@@ -220,7 +259,6 @@ if __name__ == "__main__":
         print("Closed dask client\n")
 
     print(f"Sucessfully computed {args.mode} related variables!\n")
-
     if args.mode == "snow":
         print("Continue by computing the crop coefficients (needed to calculate the "
               "evapotranspiration later) by running\n\t`python phenology.py [year1 ...]`\n")

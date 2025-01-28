@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+
+"""Phenology module
+
+This module computes the crop coefficients and plant heights.
+"""
+
+__all__ = [
+    "main",
+    "compute_phenology_variables",
+]
+
 from dask import array as dask_arr
 import numpy as np
 import operator
@@ -8,14 +19,9 @@ from typing import Iterable
 import xarray as xr
 
 
-__all__ = [
-    "main",
-    "compute_phenology_variables",
-]
-
-
 class Kc_condition_atom:
-    # TODO add docstring
+    """Internal comparator class
+    """
     def __init__(self, comparator: callable, value: float | pd.Timestamp | xr.DataArray):
         self.comparator = comparator
         self.value = value
@@ -40,7 +46,8 @@ class Kc_condition_atom:
 
 
 class Kc_condition:
-    # TODO add docstring
+    """Internal class to combine comparators
+    """
     def __init__(self, condition_tuple: tuple["Kc_condition_atom"]):
         self.condition_tuple = condition_tuple
 
@@ -57,7 +64,19 @@ def conditional_cumulative_temperature(temperature: xr.DataArray,
                                        threshold: float,
                                        timesteps_above_threshold: int = 5,
                                        ) -> xr.DataArray:
-    # TODO add docstring
+    """Internal temperature counting function
+
+    :param temperature: Daily temperature time series (one year)
+    :type temperature: xr.DataArray
+    :param start_month: Month in which to start counting
+    :type start_month: int
+    :param threshold: "Zero-point". Positive (temperature-threshold) will be counted
+    :type threshold: float
+    :param timesteps_above_threshold: Minimum number of days above threshold, defaults to 5
+    :type timesteps_above_threshold: int, optional
+    :return: Cumulative temperature above threshold
+    :rtype: xr.DataArray
+    """
     return xr.where(
         np.logical_and(
             np.logical_and(
@@ -70,41 +89,58 @@ def conditional_cumulative_temperature(temperature: xr.DataArray,
         ), temperature-threshold, 0).cumsum("time")
 
 
-def apply_condition_value_list(condition_value_list: list[tuple["Kc_condition", float]],
+def apply_condition_value_list(condition_value_list: Iterable[tuple["Kc_condition", float]],
                                arr: xr.DataArray,
                                ) -> xr.DataArray:
-    # TODO add docstring (note: Think: FIFO stack. As a consequence, later
-    # values override previous.)
+    """Internal wrapper to assign values if condition met
+
+    Note: Later values override earlier ones.
+
+    :param condition_value_list: List of (condition, value) pairs
+    :type condition_value_list: list[tuple[&quot;Kc_condition&quot;, float]]
+    :param arr: Input data
+    :type arr: xr.DataArray
+    :return: Array filled with provided values where conditions met of same shape as `arr`
+    :rtype: xr.DataArray
+    """
     out = xr.DataArray(np.nan, coords=arr.coords)
     for cond, val in condition_value_list:
         out = xr.where(cond.compare(arr), val, out)
     return out
 
 
-def build_Kc_factor_array(Kc_factor_defs: list[tuple["Kc_condition", float]],
+def build_Kc_factor_array(Kc_factor_defs: Iterable[tuple["Kc_condition", float]],
                           cumT: xr.DataArray,
                           ) -> xr.DataArray:
+    """Linearly interpolates apply_condition_value_list"""
     return apply_condition_value_list(Kc_factor_defs, cumT).interpolate_na("time", "linear")
 
 
-def build_plant_height_array(plant_height_defs: list[tuple["Kc_condition", float]],
+def build_plant_height_array(plant_height_defs: Iterable[tuple["Kc_condition", float]],
                              cumT: xr.DataArray,
                              ) -> xr.DataArray:
+    """Zero-fills apply_condition_value_list"""
     return apply_condition_value_list(plant_height_defs, cumT).fillna(0)
 
 
-def compute_phenology_variables(temperature: xr.DataArray,
-                                crop_list: list[str] = None,
-                                ) -> xr.Dataset:
-    # TODO add docstring
+def compute_phenology_variables(
+        temperature: xr.DataArray,
+        crop_list: Iterable[str] = ("winter wheat", "spring barley", "maize", "grassland"),
+        ) -> xr.Dataset:
+    """Compute crop coefficients and plant heights
 
+    :param temperature: Daily surface air temperature average for one year
+    :type temperature: xr.DataArray
+    :param crop_list: List of crops for which to compute, defaults to ("winter
+        wheat", "spring barley", "maize", "grassland")
+    :type crop_list: Iterable[str], optional
+    :return: Dataset containing crop coefficients and plant heights
+    :rtype: xr.Dataset
+    """
     # all of winter wheat, spring barley, grain maize, potato, soybeans and a grassland (mähwiese)
     # need to be included
 
     # TODO CRS should be adopted from coords
-
-    if crop_list is None:
-        crop_list = ["winter wheat", "spring barley", "maize", "grassland"]
 
     before_growing_season = Kc_condition_atom(operator.eq, 0)
     before_out_season = Kc_condition_atom(operator.lt, pd.Timestamp(month=12, day=1, year=999))
@@ -245,9 +281,18 @@ def compute_phenology_variables(temperature: xr.DataArray,
 
 
 def main(years: Iterable[int],
-         crop_list: list = None) -> None:
-    if crop_list is None:
-        crop_list = ["winter wheat", "spring barley", "maize", "grassland"]
+         crop_list: Iterable = ("winter wheat", "spring barley", "maize", "grassland")):
+    """Load data, compute phenology, and save output
+
+    Wraps compute_phenology_variables by loading the input data and writing the
+    output to a Zarr storage.
+
+    :param years: List of years to compute
+    :type years: Iterable[int]
+    :param crop_list: List of crops to compute, defaults to ("winter wheat", "spring
+        barley", "maize", "grassland")
+    :type crop_list: Iterable, optional
+    """
     for year in years:
         if os.path.isdir(f"../data/intermediate/{year}.zarr"):
             print(f"! WARNING: {year}.zarr already exists. Skipping.")
@@ -291,6 +336,5 @@ if __name__ == "__main__":
         print("Closed dask client\n")
 
     print("Sucessfully computed phenology related variables!\n")
-
     print("Continue by computing the soil water by running\n\t`python water_budget.py -m soil"
           "[year1 ...]`\n")

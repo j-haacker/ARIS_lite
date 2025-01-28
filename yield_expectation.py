@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-import os
-from typing import Iterable
-import xarray as xr
-import numpy as np
 
+"""Yield module
+
+Estimates yield based on stress indices
+"""
 
 __all__ = [
     "main_combined_stress",
@@ -12,8 +12,34 @@ __all__ = [
     "calc_yield",
 ]
 
+import os
+from typing import Iterable
+import xarray as xr
+import numpy as np
 
-def calc_combined_stress(ds) -> xr.DataArray:
+
+def set_combined_stress_meta(da: xr.DataArray) -> xr.DataArray:
+    """Set metadata for the combined stress index"""
+    return (
+        da.rename("combined_stress")
+          .assign_attrs(dict(unit="",
+                             long_name="daily crop specific stress index based on maximum "
+                                       "surface air temperature and soil water saturation",
+                             description="Index of combination of plant growth inhibiting "
+                                         "factors. Used for yield estimation."))
+    )
+
+
+def calc_combined_stress(ds: xr.Dataset) -> xr.DataArray:
+    """Calculate combined stress index
+
+    The combined stress index folds the water/drought stress and the heat stress
+
+    :param ds: Dataset containing variables "waterstress" and "max_air_temp"
+    :type ds: xr.Dataset
+    :return: Combined stress index
+    :rtype: xr.DataArray
+    """
     combined_stress = ds.waterstress.where(False)
     for i in range(combined_stress.shape[0]):
         if combined_stress[i].crop == "winter wheat":
@@ -34,16 +60,15 @@ def calc_combined_stress(ds) -> xr.DataArray:
         if combined_stress[i].crop in ["grassland", "maize"]:
             combined_stress[i] = combined_stress[i].where(ds.time.dt.month >= 5)
     combined_stress = combined_stress.where((ds.Kc_factor > .5)[:, ::-1].cumsum("time") != 0)
-    return combined_stress
+    return set_combined_stress_meta(combined_stress)
 
 
-def calc_yield(csi: xr.DataArray) -> xr.DataArray:
-    const = xr.zeros_like(csi.crop)+[6.64, 5.11, 10.99, 87.53]
-    trend = xr.zeros_like(csi.crop)-[.000084, .0002, .0005, .0055]
-    return (const + trend * csi.sum("time")).where((~csi.isnull()).any("time"))
+def main_combined_stress(years: Iterable[int]):
+    """Load input data and write combined stress to Zarr store
 
-
-def main_combined_stress(years: Iterable[int]) -> None:
+    :param years: List of years to compute
+    :type years: Iterable[int]
+    """
     TAW = xr.open_dataarray("../data/input/soil_taw.nc", decode_coords="all")
     for year in years:
         if os.path.isdir(f"../data/intermediate/CSI_{year}.zarr"):
@@ -57,20 +82,42 @@ def main_combined_stress(years: Iterable[int]) -> None:
         max_air_temp = xr.open_zarr(f"../data/input/{year}.zarr", decode_coords="all")\
                          .max_air_temp.astype("f4")
         data_collection = xr.merge([waterstress, max_air_temp, ds.Kc_factor.astype("f4")])
-        csi = (data_collection.map_blocks(calc_combined_stress,
-                                          template=data_collection.Kc_factor.astype("f4"))
-                              .rename("combined_stress")
-                              .assign_attrs(dict(
-                                  unit="",
-                                  long_name="daily crop specific stress index based on maximum "
-                                            "surface air temperature and soil water saturation",
-                                  description="Index of combination of plant growth inhibiting "
-                                              "factors. Used for yield estimation."
-                              )))
+        csi = set_combined_stress_meta(data_collection.map_blocks(
+            calc_combined_stress, template=data_collection.Kc_factor.astype("f4")))
         csi.drop_encoding().to_zarr(f"../data/intermediate/CSI_{year}.zarr", mode="a-")
 
 
-def main_yield(years: Iterable[int]) -> None:
+def set_yield_meta(da: xr.DataArray) -> xr.DataArray:
+    """Set metadata for the combined stress index"""
+    return (
+        da.rename("yield_expectation")
+          .assign_attrs(dict(unit="t/ha",
+                             long_name="Expected yield in tonnes per hectare",
+                             description="The expected yield given a certain combined stress "
+                                         "which is crop specific and bases on water availability "
+                                         "and heat above defined thresholds.")))
+
+
+def calc_yield(csi: xr.DataArray) -> xr.DataArray:
+    """Estimate yield
+
+    :param csi: Combined stress index
+    :type csi: xr.DataArray
+    :return: Yield expectation
+    :rtype: xr.DataArray
+    """
+    const = xr.zeros_like(csi.crop)+[6.64, 5.11, 10.99, 87.53]
+    trend = xr.zeros_like(csi.crop)-[.000084, .0002, .0005, .0055]
+    yield_expectation = (const + trend * csi.sum("time")).where((~csi.isnull()).any("time"))
+    return set_yield_meta(yield_expectation)
+
+
+def main_yield(years: Iterable[int]):
+    """Load input data and write yield expectations to Zarr store
+
+    :param years: List years to compute
+    :type years: Iterable[int]
+    """
     for year in years:
         if os.path.isdir(f"../data/output/{year}.zarr"):
             print(f"! WARNING: {year}.zarr already exists. Skipping.")
