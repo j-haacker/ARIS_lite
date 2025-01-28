@@ -1,8 +1,10 @@
 ARIS\_lite package
 ==================
 
-Submodules
-----------
+.. automodule:: ARIS_lite
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 ARIS\_lite.phenology module
 ---------------------------
@@ -24,14 +26,6 @@ ARIS\_lite.yield\_expectation module
 ------------------------------------
 
 .. automodule:: ARIS_lite.yield_expectation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: ARIS_lite
    :members:
    :undoc-members:
    :show-inheritance:

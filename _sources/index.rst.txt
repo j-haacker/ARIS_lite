@@ -1,37 +1,12 @@
-ARIS\_lite package
-==================
+Documentation of ARIS_lite
+==========================
 
-Submodules
-----------
+.. toctree::
+   ARIS_lite
 
-ARIS\_lite.phenology module
----------------------------
+-------
 
-.. automodule:: ARIS_lite.phenology
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Find the `code on GitHub <https://github.com/j-haacker/ARIS_lite_>`_. Below, the package README is mirrored.
 
-ARIS\_lite.water\_budget module
--------------------------------
-
-.. automodule:: ARIS_lite.water_budget
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-ARIS\_lite.yield\_expectation module
-------------------------------------
-
-.. automodule:: ARIS_lite.yield_expectation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: ARIS_lite
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. include:: ../README.md
+   :parser: myst_parser.sphinx_
