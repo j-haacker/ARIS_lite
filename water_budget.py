@@ -23,7 +23,7 @@ import os
 import xarray as xr
 from typing import Iterable
 
-from snowMAUS import snowmaus
+import snowmaus
 
 
 def calc_snow(ds: xr.Dataset) -> xr.Dataset:

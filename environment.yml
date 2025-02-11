@@ -11,6 +11,7 @@ dependencies:
   - python=3.12.8
   - rasterio=1.4.3
   - rioxarray=0.18.2
+  - snowmaus
   - tornado=6.4.2
   - xarray=2025.1.1
   - zarr=3.0.1
