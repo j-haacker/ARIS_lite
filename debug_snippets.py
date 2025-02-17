@@ -7,6 +7,7 @@ ctrl_dict = dict(
     Kc_factor="kc",
     max_air_temp="Tmax",
     min_air_temp="Tmin",
+    precipitation="Prec",
 )
 
 ctrl_point_grid = gpd.read_file("../data/reference/ARIS/small_grid_ids_500m")
@@ -29,7 +30,7 @@ def read_ctrl_data(variable):
                      header=0, decimal=",")
     df.index = pd.MultiIndex.from_arrays([df["ID"], pd.to_datetime(df[["Year", "Month", "Day"]])],
                                          names=["ID", "date"])
-    return df.loc(0)[:, "2020"].iloc(1)[-1]
+    return df.loc(0)[:, "2020"].iloc(1)[-1].sort_index()
 
 
 def postprocess(da):
@@ -44,4 +45,3 @@ def compare_ctrl(da):
         da.sel(**locations.loc[ID], method="nearest").pipe(postprocess).plot()
         ctrl_series.loc[ID].plot(ax=plt.gca())
         plt.show()
-        
