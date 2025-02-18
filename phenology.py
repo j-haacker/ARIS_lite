@@ -85,6 +85,9 @@ def conditional_cumulative_temperature(
     """
     return xr.where(
         np.logical_and(
+            #  this intransparent lines (until end) satisfy the requirement to
+            #  have a number of consecutive days with temperatures above a
+            #  threshold
             np.logical_and(
                 temperature.time.dt.month >= start_month,
                 (temperature >= threshold)
@@ -93,7 +96,7 @@ def conditional_cumulative_temperature(
                 .sum()
                 == timesteps_above_threshold,
             ).cumsum("time")
-            >= 1,
+            >= 1,  # end
             temperature >= threshold,
         ),
         temperature - threshold,
