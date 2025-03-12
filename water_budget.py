@@ -104,7 +104,9 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
                 template.rename("soil_depletion"),
             ]
         )
-    pot_interc_precip = np.max([1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp])
+    pot_interc_precip = dask_arr.maximum(
+        1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp
+    )
     liq_precip = ds.precipitation - ds.snowfall
     incoming_water = xr.where(
         pot_interc_precip <= liq_precip, liq_precip - pot_interc_precip, 0
