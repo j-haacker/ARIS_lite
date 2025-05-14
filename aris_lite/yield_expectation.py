@@ -160,7 +160,7 @@ def main_yield(years: Iterable[int]):
         )
 
 
-if __name__ == "__main__":
+def main_cli():
     import argparse
 
     parser = argparse.ArgumentParser(description="computes stress and/or yield")
@@ -239,3 +239,8 @@ if __name__ == "__main__":
         print("Closed dask client\n")
 
     print(f"Sucessfully computed {args.mode} related variables!\n")
+
+
+if __name__ == "__main__":
+    main_cli()
+

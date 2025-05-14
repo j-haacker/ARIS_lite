@@ -284,7 +284,7 @@ def main_snow(years: Iterable[int]):
         ).drop_encoding().to_zarr(f"../data/intermediate/snow_{year}.zarr", mode="a")
 
 
-if __name__ == "__main__":
+def main_cli():
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -377,3 +377,8 @@ if __name__ == "__main__":
             "Continue by computing the expected yield by running\n\t`python "
             "yield_expectation.py [year1 ...]`\n"
         )
+
+
+if __name__ == "__main__":
+    main_cli()
+

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["flit_core >=3.11,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "aris_lite"
+authors = [{name = "Jan Haacker", email = "jan.haacker@boku.ac.at"}]
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.txt"]
+dynamic = ["version", "description"]
+dependencies= [
+  "dask[complete]",
+  "numpy",
+  "pandas",
+  "snowmaus",
+  "xarray",
+  "zarr>=3",
+]
+
+[project.scripts]
+aris-calc-waterbudget = "aris_lite.water_budget:main_cli"
+aris-calc-pheno = "aris_lite.phenology:main_cli"
+aris-calc-yield = "aris_lite.yield_expectation:main_cli"

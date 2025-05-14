@@ -400,7 +400,7 @@ def main(
         ).drop_encoding().to_zarr(f"../data/intermediate/{year}.zarr", mode="a-")
 
 
-if __name__ == "__main__":
+def main_cli():
     import argparse
 
     parser = argparse.ArgumentParser(description="computes stress and/or yield")
@@ -448,3 +448,8 @@ if __name__ == "__main__":
         "Continue by computing the soil water by running\n\t`python water_budget.py -m soil"
         "[year1 ...]`\n"
     )
+
+
+if __name__ == "__main__":
+    main_cli()
+
