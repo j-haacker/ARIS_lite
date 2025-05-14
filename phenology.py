@@ -145,7 +145,7 @@ def build_plant_height_array(
 
 def compute_phenology_variables(
     temperature: xr.DataArray,
-    crop_list: Iterable[str] = ("winter wheat", "spring barley", "maize", "grassland"),
+    crops: Iterable[str] = ("winter wheat", "spring barley", "maize", "grassland"),
 ) -> xr.Dataset:
     """Compute crop coefficients and plant heights
 
@@ -177,7 +177,7 @@ def compute_phenology_variables(
 
     Kc_factor_da_list = []
     plant_height_da_list = []
-    for crop in crop_list:
+    for crop in crops:
         if crop == "winter wheat":
             mid_season_start_cumT = 350
             mid_season_end_cumT = mid_season_start_cumT + 692
@@ -351,12 +351,12 @@ def compute_phenology_variables(
 
     Kc_factor_da_list = (
         xr.concat(Kc_factor_da_list, "crop")
-        .assign_coords(crop=crop_list)
+        .assign_coords(crop=("crop", list(crops)))
         .rename("Kc_factor")
     )
     plant_height_da_list = (
         xr.concat(plant_height_da_list, "crop")
-        .assign_coords(crop=crop_list)
+        .assign_coords(crop=("crop", list(crops)))
         .rename("plant_height")
     )
     out = xr.merge([Kc_factor_da_list, plant_height_da_list])
@@ -367,7 +367,7 @@ def compute_phenology_variables(
 
 def main(
     years: Iterable[int],
-    crop_list: Iterable = ("winter wheat", "spring barley", "maize", "grassland"),
+    crops: Iterable = ("winter wheat", "spring barley", "maize", "grassland"),
 ):
     """Load data, compute phenology, and save output
 
@@ -384,19 +384,19 @@ def main(
         if os.path.isdir(f"../data/intermediate/{year}.zarr"):
             print(f"! WARNING: {year}.zarr already exists. Skipping.")
             continue
-        print("Calculating phenology variables for year", year, "and crops", crop_list)
+        print("Calculating phenology variables for year", year, "and crops", crops)
         T2m = xr.open_zarr(
             f"../data/input/{year}.zarr", decode_coords="all"
         ).air_temperature
         template = xr.DataArray(
-            dask_arr.zeros(shape=(len(crop_list), *T2m.shape), dtype="f4"),
-            coords=T2m.expand_dims({"crop": crop_list}).coords,
+            dask_arr.zeros(shape=(len(crops), *T2m.shape), dtype="f4"),
+            coords=T2m.expand_dims({"crop": crops}).coords,
         ).chunk(dict(crop=-1, time=-1, x=41, y=37))
         template = xr.merge(
             [template.rename("Kc_factor"), template.rename("plant_height")]
         )
         T2m.map_blocks(
-            lambda x: compute_phenology_variables(x, crop_list), template=template
+            lambda x: compute_phenology_variables(x, crops), template=template
         ).drop_encoding().to_zarr(f"../data/intermediate/{year}.zarr", mode="a-")
 
 
