@@ -130,7 +130,7 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     ETC = ds.Kc_factor * ET0
 
     D_r = xr.DataArray(
-        np.float32(0),
+        np.zeros(len(Kc_plus_climEff.dims) + 1, dtype="float32"),
         dims=[*Kc_plus_climEff.dims, "layer"],
         coords={
             **{k: Kc_plus_climEff[k] for k in Kc_plus_climEff.coords},
@@ -138,7 +138,7 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
         },
     ).rename("soil_depletion")
     ET = xr.DataArray(
-        np.float32(np.nan),
+        np.full(len(Kc_plus_climEff.dims) + 1, np.nan, dtype="float32"),
         dims=[*Kc_plus_climEff.dims, "layer"],
         coords={
             **{k: Kc_plus_climEff[k] for k in Kc_plus_climEff.coords},
