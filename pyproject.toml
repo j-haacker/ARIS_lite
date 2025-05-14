@@ -11,6 +11,7 @@ license-files = ["LICENSE.txt"]
 dynamic = ["version", "description"]
 dependencies= [
   "dask[complete]",
+  "h5netcdf",
   "numpy",
   "pandas",
   "snowmaus",
