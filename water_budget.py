@@ -343,8 +343,12 @@ if __name__ == "__main__":
 
     from dask.distributed import LocalCluster, Client
 
-    print("Starting dask")
-    client = Client(LocalCluster(args.workers, memory_limit=args.mem_per_worker))
+    print(f"Starting dask ({args.workers} CPUs, each {args.mem_per_worker} RAM)")
+    client = Client(
+        LocalCluster(
+            n_workers=args.workers, memory_limit=args.mem_per_worker, death_timeout=30
+        )
+    )
     print("... access the dashboard at", client.dashboard_link)
 
     try:
