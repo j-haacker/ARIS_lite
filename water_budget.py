@@ -105,7 +105,14 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
             ]
         )
     pot_interc_precip = dask_arr.maximum(
-        1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp
+        # activate one of the two implementations
+        # # below implements the formula from the Schaumber Thesis
+        # 1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp
+        # below implements the (original) ARIS interception
+        # ! assumes Kc is 1.2 between mid and end season
+        # ! makes irrelevant mistake after end season (=0.13 instead 0.1)
+        ds.Kc_factor
+        / 3
     )
     liq_precip = ds.precipitation - ds.snowfall
     incoming_water = xr.where(
