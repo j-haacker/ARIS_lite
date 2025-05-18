@@ -191,7 +191,7 @@ def main_cli():
 
     if args.mode == "auto":
         if all(
-            os.path.isdir(f"../data/intermediate/csi_{year}.zarr")
+            os.path.isdir(f"../data/intermediate/CSI_{year}.zarr")
             for year in args.years
         ):
             print(
@@ -206,7 +206,7 @@ def main_cli():
                     [
                         str(year)
                         for year in args.years
-                        if not os.path.isdir(f"../data/intermediate/snow_{year}.zarr")
+                        if not os.path.isdir(f"../data/intermediate/CSI_{year}.zarr")
                     ]
                 )
                 + ".",
@@ -243,4 +243,3 @@ def main_cli():
 
 if __name__ == "__main__":
     main_cli()
-
