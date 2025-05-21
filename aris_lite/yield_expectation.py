@@ -120,8 +120,11 @@ def calc_yield(csi: xr.DataArray) -> xr.DataArray:
     :return: Yield expectation
     :rtype: xr.DataArray
     """
-    const = xr.zeros_like(csi.crop) + [6.64, 5.11, 10.99, 87.53]
-    trend = xr.zeros_like(csi.crop) - [0.000084, 0.0002, 0.0005, 0.0055]
+    const = xr.DataArray(
+        [6.64, 5.11, 10.99, 87.53],
+        coords={"crop": ["winter wheat", "spring barley", "maize", "grassland"]},
+    )
+    trend = xr.zeros_like(const) - [0.000084, 0.0002, 0.0005, 0.0055]
     yield_expectation = (const + trend * csi.sum("time")).where(
         (~csi.isnull()).any("time")
     )
