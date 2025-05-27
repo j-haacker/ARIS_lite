@@ -89,7 +89,7 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     if ds.Kc_factor.isnull().all():
         template = xr.DataArray(
             dask_arr.zeros(
-                shape=(*ds.Kc_factor.shape, 2), dtype="float", chunks=(4, -1, 37, 41, 2)
+                shape=(*ds.Kc_factor.shape, 2), dtype="float", chunks=(-1, -1, 37, 41, 2)
             ),
             dims=[*ds.Kc_factor.dims, "layer"],
             coords={
