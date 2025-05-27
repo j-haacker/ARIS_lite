@@ -212,7 +212,7 @@ def compute_phenology_variables(
             group_output_collector2 = []
             try:
                 for (
-                    label,
+                    _,
                     group,
                 ) in cumT_5.groupby_bins(  # FIXME wrap in .map_blocks if chunked
                     cumT_5.sel(time=f"{cumT_5.time[0].dt.year.values}-11-30"),
@@ -458,4 +458,3 @@ def main_cli():
 
 if __name__ == "__main__":
     main_cli()
-
