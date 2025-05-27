@@ -195,6 +195,36 @@ def compute_phenology_variables(
             mid_season_start_cumT = 249
             mid_season_end_cumT = mid_season_start_cumT + 1238
             cumT = cumT_8
+        elif crop.startswith("wofost potato"):
+            Kc_mid_val = 1.0
+            cumT = (
+                temperature.where(temperature >= 3, 0)
+                .where(
+                    temperature.time
+                    >= pd.Timestamp(
+                        year=temperature.time.dt.year.item(0), month=4, day=15
+                    )
+                )
+                .cumsum("time")
+            )
+            before_growing_season_cumT = 170
+            before_growing_season = Kc_condition_atom(
+                operator.ge, before_growing_season_cumT
+            )
+            if crop.endswith("very early"):
+                mid_season_start_cumT = before_growing_season_cumT + 150
+                mid_season_end_cumT = mid_season_start_cumT + 1250
+            elif crop.endswith("mid"):
+                mid_season_start_cumT = before_growing_season_cumT + 150
+                mid_season_end_cumT = mid_season_start_cumT + 1500
+            elif crop.endswith("late"):
+                mid_season_start_cumT = before_growing_season_cumT + 200
+                mid_season_end_cumT = mid_season_start_cumT + 1700
+            else:
+                print(
+                    f"! WARNING: requested crop {crop} was not recognized and is skipped."
+                )
+                continue
         elif crop == "grassland":
             # grassland needs to be implemented slightly different
             # ! cumulative temperature thresholds do not seem to make sense because
@@ -342,6 +372,9 @@ def compute_phenology_variables(
             plant_height_periods = [(mid_season, 1), (late_and_end_season, 0.2)]
         elif crop == "maize":
             plant_height_periods = [(mid_season, 2), (late_and_end_season, 0.2)]
+        elif "potato" in crop:
+            # TODO update with calibrated values
+            plant_height_periods = [(mid_season, 1), (late_and_end_season, 0.2)]
         elif crop == "grassland":
             plant_height_periods = [(end_season, 0.2)]
         else:
