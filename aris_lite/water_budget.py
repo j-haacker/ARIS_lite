@@ -89,7 +89,9 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     if ds.Kc_factor.isnull().all():
         template = xr.DataArray(
             dask_arr.zeros(
-                shape=(*ds.Kc_factor.shape, 2), dtype="float", chunks=(-1, -1, 37, 41, 2)
+                shape=(*ds.Kc_factor.shape, 2),
+                dtype="float",
+                chunks=(-1, -1, 37, 41, 2),
             ),
             dims=[*ds.Kc_factor.dims, "layer"],
             coords={
@@ -244,10 +246,10 @@ def main_snow(years: Iterable[int]):
             continue
         main_ds = xr.open_zarr(f"../data/input/{year}.zarr", decode_coords="all")
         if os.path.isdir(
-            f"../data/intermediate/snow_{year-1}.zarr"
-        ) and "snowcover" in xr.open_zarr(f"../data/intermediate/snow_{year-1}.zarr"):
+            f"../data/intermediate/snow_{year - 1}.zarr"
+        ) and "snowcover" in xr.open_zarr(f"../data/intermediate/snow_{year - 1}.zarr"):
             main_ds["initial_snowcover"] = xr.open_zarr(
-                f"../data/intermediate/snow_{year-1}.zarr"
+                f"../data/intermediate/snow_{year - 1}.zarr"
             ).snowcover.isel(time=-1)
             # next step is necessary! somehow this `xr.where` changes how the data looks internally
             main_ds["precipitation"] = xr.where(
