@@ -209,7 +209,7 @@ def compute_phenology_variables(
             )
             before_growing_season_cumT = 170
             before_growing_season = Kc_condition_atom(
-                operator.ge, before_growing_season_cumT
+                operator.lt, before_growing_season_cumT
             )
             if crop.endswith("very early"):
                 mid_season_start_cumT = before_growing_season_cumT + 150
