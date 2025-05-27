@@ -162,6 +162,11 @@ def compute_phenology_variables(
 
     # TODO CRS should be adopted from coords
 
+    Kc_ini_val = 0.4
+    Kc_mid_val = 1.2
+    Kc_end_val = 0.5
+    Kc_out_val = 0.4
+
     before_growing_season = Kc_condition_atom(operator.eq, 0)
     before_out_season = Kc_condition_atom(
         operator.lt, pd.Timestamp(month=12, day=1, year=999)
@@ -322,10 +327,10 @@ def compute_phenology_variables(
         end_season = Kc_condition([after_late_end, before_out_season])
 
         Kc_factor_periods = [
-            (before_growing_season, 0.4),
-            (mid_season, 1.2),
-            (end_season, 0.5),
-            (out_season, 0.4),
+            (before_growing_season, Kc_ini_val),
+            (mid_season, Kc_mid_val),
+            (end_season, Kc_end_val),
+            (out_season, Kc_out_val),
         ]
         Kc_factor_da_list.append(
             build_Kc_factor_array(Kc_factor_periods, cumT).rename(
