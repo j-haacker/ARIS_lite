@@ -425,7 +425,9 @@ def main(
         T2m = xr.open_zarr(
             f"../data/input/{year}.zarr", decode_coords="all"
         ).air_temperature
-        if T2m.time.dt.calendar in ["noleap", ]:
+        if T2m.time.dt.calendar in [
+            "noleap",
+        ]:
             original_calendar = T2m.time.dt.calendar
             T2m = xr.coding.calendar_ops.convert_calendar(T2m, "gregorian")
         template = xr.DataArray(
