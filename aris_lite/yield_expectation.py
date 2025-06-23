@@ -31,7 +31,7 @@ def set_combined_stress_meta(da: xr.DataArray) -> xr.DataArray:
     )
 
 
-def calc_combined_stress(ds: xr.Dataset) -> xr.DataArray:
+def calc_combined_stress(ds: xr.Dataset, threshold_temperature = None) -> xr.DataArray:
     """Calculate combined stress index
 
     The combined stress index folds the water/drought stress and the heat stress
@@ -43,6 +43,7 @@ def calc_combined_stress(ds: xr.Dataset) -> xr.DataArray:
     """
     combined_stress = ds.waterstress.where(False)
     for i in range(combined_stress.shape[0]):
+        # print(combined_stress[i].crop.item(0), combined_stress[i].crop.item(0).__class__, "potato" in combined_stress[i].crop.item(0), flush=True)
         if combined_stress[i].crop == "winter wheat":
             combined_stress[i] = xr.where(
                 ds.max_air_temp > 26,
@@ -55,10 +56,19 @@ def calc_combined_stress(ds: xr.Dataset) -> xr.DataArray:
                 (ds.waterstress[i] * (ds.max_air_temp - 29)) - 33,
                 ds.waterstress[i],
             ).where(ds.time.dt.month >= 3)
+        if "potato" in combined_stress[i].crop.item(0):
+            # print(threshold_temperature, threshold_temperature.__class__, flush=True)
+            combined_stress[i] = xr.where(
+                np.logical_and(ds.max_air_temp > threshold_temperature, ds.waterstress[i] > 33),
+                (ds.waterstress[i] * (ds.max_air_temp - (threshold_temperature - 1))) - 33,
+                ds.waterstress[i],
+            ).where(ds.time.dt.month >= 4)  # actually 15.4. shouldn't matter
         if combined_stress[i].crop == "grassland":
             combined_stress[i] = ds.waterstress[i]
         if combined_stress[i].crop in ["winter wheat", "spring barley"]:
             combined_stress[i] = combined_stress[i].where(ds.time.dt.month >= 3)
+        if "potato" in combined_stress[i].crop.item(0):
+            combined_stress[i] = combined_stress[i].where(ds.time.dt.month >= 4)
         if combined_stress[i].crop in ["grassland", "maize"]:
             combined_stress[i] = combined_stress[i].where(ds.time.dt.month >= 5)
     combined_stress = combined_stress.where(
@@ -125,7 +135,8 @@ def calc_yield(csi: xr.DataArray) -> xr.DataArray:
         coords={"crop": ["winter wheat", "spring barley", "maize", "grassland"]},
     )
     trend = xr.zeros_like(const) - [0.000084, 0.0002, 0.0005, 0.0055]
-    yield_expectation = (const + trend * csi.sum("time")).where(
+    # yield_expectation = (const + trend * csi.sum("time")).where(
+    yield_expectation = (const + trend * csi.max("time")).where(
         (~csi.isnull()).any("time")
     )
     return set_yield_meta(yield_expectation)
