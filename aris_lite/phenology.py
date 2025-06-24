@@ -303,15 +303,17 @@ def compute_phenology_variables(
                         build_plant_height_array([(end_season, 0.2)], group)
                     )
                 Kc_factor_da_list.append(
-                    xr.concat(group_output_collector, "stacked_y_x")
-                    .sortby("stacked_y_x")
+                    xr.concat(group_output_collector, group_output_collector[0].dims[1])
+                    .sortby(group_output_collector[0].dims[1])
                     .unstack()
                     .reindex_like(cumT_5)
                     .rename(crop.replace(" ", "_"))
                 )
                 plant_height_da_list.append(
-                    xr.concat(group_output_collector2, "stacked_y_x")
-                    .sortby("stacked_y_x")
+                    xr.concat(
+                        group_output_collector2, group_output_collector[0].dims[1]
+                    )
+                    .sortby(group_output_collector[0].dims[1])
                     .unstack()
                     .reindex_like(cumT_5)
                     .rename(crop.replace(" ", "_"))
