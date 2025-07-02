@@ -2,7 +2,9 @@
 
 """Yield module
 
-Estimates yield based on stress indices
+Estimates yield based on stress indices.
+This module provides functions to calculate combined crop stress indices and expected yield
+based on environmental and crop-specific factors, such as water stress and temperature.
 """
 
 __all__ = [
@@ -19,7 +21,17 @@ import numpy as np
 
 
 def set_combined_stress_meta(da: xr.DataArray) -> xr.DataArray:
-    """Set metadata for the combined stress index"""
+    """
+    Set metadata for the combined stress index DataArray.
+
+    This function renames the DataArray to 'combined_stress' and assigns descriptive
+    attributes for units, long name, and description.
+
+    :param da: DataArray to annotate.
+    :type da: xr.DataArray
+    :return: Annotated DataArray with metadata.
+    :rtype: xr.DataArray
+    """
     return da.rename("combined_stress").assign_attrs(
         dict(
             unit="",
@@ -31,14 +43,20 @@ def set_combined_stress_meta(da: xr.DataArray) -> xr.DataArray:
     )
 
 
-def calc_combined_stress(ds: xr.Dataset, threshold_temperature = None) -> xr.DataArray:
-    """Calculate combined stress index
+def calc_combined_stress(ds: xr.Dataset, threshold_temperature=None) -> xr.DataArray:
+    """
+    Calculate the combined stress index for crops.
 
-    The combined stress index folds the water/drought stress and the heat stress
+    The combined stress index integrates water/drought stress and heat stress for each crop,
+    applying crop-specific logic and temperature thresholds. The function processes each crop
+    and time step, applying different rules for winter wheat, spring barley, maize, potato,
+    and grassland.
 
-    :param ds: Dataset containing variables "waterstress" and "max_air_temp"
+    :param ds: Dataset containing variables "waterstress", "max_air_temp", and "Kc_factor".
     :type ds: xr.Dataset
-    :return: Combined stress index
+    :param threshold_temperature: Optional temperature threshold for potato crops.
+    :type threshold_temperature: float, optional
+    :return: Combined stress index as a DataArray.
     :rtype: xr.DataArray
     """
     combined_stress = ds.waterstress.where(False)
@@ -59,10 +77,15 @@ def calc_combined_stress(ds: xr.Dataset, threshold_temperature = None) -> xr.Dat
         if "potato" in combined_stress[i].crop.item(0):
             # print(threshold_temperature, threshold_temperature.__class__, flush=True)
             combined_stress[i] = xr.where(
-                np.logical_and(ds.max_air_temp > threshold_temperature, ds.waterstress[i] > 33),
-                (ds.waterstress[i] * (ds.max_air_temp - (threshold_temperature - 1))) - 33,
+                np.logical_and(
+                    ds.max_air_temp > threshold_temperature, ds.waterstress[i] > 33
+                ),
+                (ds.waterstress[i] * (ds.max_air_temp - (threshold_temperature - 1)))
+                - 33,
                 ds.waterstress[i],
-            ).where(ds.time.dt.month >= 4)  # actually 15.4. shouldn't matter
+            ).where(
+                ds.time.dt.month >= 4
+            )  # actually 15.4. shouldn't matter
         if combined_stress[i].crop == "grassland":
             combined_stress[i] = ds.waterstress[i]
         if combined_stress[i].crop in ["winter wheat", "spring barley"]:
@@ -78,9 +101,13 @@ def calc_combined_stress(ds: xr.Dataset, threshold_temperature = None) -> xr.Dat
 
 
 def main_combined_stress(years: Iterable[int]):
-    """Load input data and write combined stress to Zarr store
+    """
+    Load input data and write combined stress index to Zarr store for specified years.
 
-    :param years: List of years to compute
+    For each year, this function loads the necessary input datasets, computes the water stress,
+    merges relevant variables, calculates the combined stress index, and saves the result.
+
+    :param years: List of years to compute combined stress for.
     :type years: Iterable[int]
     """
     TAW = xr.open_dataarray("../data/input/soil_taw.nc", decode_coords="all")
@@ -110,7 +137,17 @@ def main_combined_stress(years: Iterable[int]):
 
 
 def set_yield_meta(da: xr.DataArray) -> xr.DataArray:
-    """Set metadata for the combined stress index"""
+    """
+    Set metadata for the yield expectation DataArray.
+
+    This function renames the DataArray to 'yield_expectation' and assigns descriptive
+    attributes for units, long name, and description.
+
+    :param da: DataArray to annotate.
+    :type da: xr.DataArray
+    :return: Annotated DataArray with metadata.
+    :rtype: xr.DataArray
+    """
     return da.rename("yield_expectation").assign_attrs(
         dict(
             unit="t/ha",
@@ -123,11 +160,15 @@ def set_yield_meta(da: xr.DataArray) -> xr.DataArray:
 
 
 def calc_yield(csi: xr.DataArray) -> xr.DataArray:
-    """Estimate yield
+    """
+    Estimate expected crop yield based on the combined stress index.
 
-    :param csi: Combined stress index
+    This function uses crop-specific constants and trends to estimate yield as a function
+    of the maximum combined stress index over the time dimension.
+
+    :param csi: Combined stress index DataArray.
     :type csi: xr.DataArray
-    :return: Yield expectation
+    :return: DataArray of expected yield for each crop.
     :rtype: xr.DataArray
     """
     const = xr.DataArray(
@@ -143,9 +184,13 @@ def calc_yield(csi: xr.DataArray) -> xr.DataArray:
 
 
 def main_yield(years: Iterable[int]):
-    """Load input data and write yield expectations to Zarr store
+    """
+    Load input data and write yield expectations to Zarr store for specified years.
 
-    :param years: List years to compute
+    For each year, this function loads the combined stress index, computes the expected yield,
+    and saves the result to the output directory.
+
+    :param years: List of years to compute yield expectations for.
     :type years: Iterable[int]
     """
     for year in years:
@@ -175,6 +220,18 @@ def main_yield(years: Iterable[int]):
 
 
 def main_cli():
+    """
+    Command-line interface for computing stress indices and/or yield expectations.
+
+    Parses command-line arguments to determine which computations to perform and for which years.
+    Initializes a Dask cluster for parallel processing, handles missing data, and manages
+    workflow for stress and yield calculations.
+
+    Usage:
+        python yield_expectation.py [-m MODE] [years ...] [--workers N] [--mem-per-worker SIZE]
+
+    :return: None
+    """
     import argparse
 
     parser = argparse.ArgumentParser(description="computes stress and/or yield")

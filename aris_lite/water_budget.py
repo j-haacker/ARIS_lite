@@ -2,12 +2,10 @@
 
 """Water budget module
 
-This module computes:
-
-- the snow/rain fraction
-- the snow cover
-- the evapotranspiration
-- the soil water availability
+This module computes the snow/rain fraction, snow cover, evapotranspiration,
+and soil water availability for crop modeling. It provides functions to process
+meteorological and crop data to estimate water-related variables critical for
+crop growth and yield estimation.
 """
 
 __all__ = [
@@ -27,13 +25,17 @@ import snowmaus
 
 
 def calc_snow(ds: xr.Dataset) -> xr.Dataset:
-    """Calculate snowfall and melt
+    """
+    Calculate snowfall, meltwater production, and snow cover over time.
+
+    This function simulates the snow accumulation and melting process based on
+    precipitation and temperature data. It returns a dataset with snowfall,
+    meltwater production, and snow cover for each time step.
 
     :param ds: Dataset containing variables "precipitation", "min_air_temp",
-        "max_air_temp", and "initial_snowcover"
+        "max_air_temp", and "initial_snowcover".
     :type ds: xr.Dataset
-    :return: Dataset containing variables "snowfall", "meltwater_production",
-        and "snowcover"
+    :return: Dataset with variables "snowfall", "meltwater_production", and "snowcover".
     :rtype: xr.Dataset
     """
     if ds.precipitation.isnull().all():
@@ -76,14 +78,18 @@ def calc_snow(ds: xr.Dataset) -> xr.Dataset:
 
 
 def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
-    """Calculate evapotranspiration and soil water depletion
+    """
+    Calculate evapotranspiration and soil water depletion for crops.
+
+    This function estimates the actual evapotranspiration, crop evapotranspiration (ETC),
+    and soil water depletion in different soil layers, based on crop coefficients,
+    meteorological data, and soil properties.
 
     :param ds: Dataset containing variables "Kc_factor", "plant_height",
-        "precipitation", "wind_speed", "rel_humidity" "pot_evapotransp",
-        "snowfall", and "meltwater_production"
+        "precipitation", "wind_speed", "rel_humidity", "pot_evapotransp",
+        "snowfall", and "meltwater_production".
     :type ds: xr.Dataset
-    :return: Dataset containing variables "evapotranspiration", "evapo_ETC", and
-        "soil_depletion"
+    :return: Dataset with variables "evapotranspiration", "evapo_ETC", and "soil_depletion".
     :rtype: xr.Dataset
     """
     if ds.Kc_factor.isnull().all():
@@ -200,9 +206,13 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
 
 
 def main_soil_water(years: Iterable[int]):
-    """Load input data and write soil related results to Zarr store
+    """
+    Load input data and write soil water and evapotranspiration results to Zarr store.
 
-    :param years: List of years to compute
+    For each year, this function loads the necessary datasets, computes soil water
+    depletion and evapotranspiration, and saves the results.
+
+    :param years: List of years to compute.
     :type years: Iterable[int]
     """
     for year in years:
@@ -247,9 +257,13 @@ def main_soil_water(years: Iterable[int]):
 
 
 def main_snow(years: Iterable[int]):
-    """Load input data and write snow related results to Zarr store
+    """
+    Load input data and write snow-related results to Zarr store.
 
-    :param years: List of years to compute
+    For each year, this function loads meteorological data, initializes snow cover,
+    computes snowfall and meltwater production, and saves the results.
+
+    :param years: List of years to compute.
     :type years: Iterable[int]
     """
     for year in years:
@@ -298,6 +312,18 @@ def main_snow(years: Iterable[int]):
 
 
 def main_cli():
+    """
+    Command-line interface for computing snow/melt or soil water and evapotranspiration.
+
+    Parses command-line arguments to determine which computations to perform and for which years.
+    Initializes a Dask cluster for parallel processing, handles missing data, and manages
+    workflow for snow and soil water calculations.
+
+    Usage:
+        python water_budget.py [-m MODE] [years ...] [--workers N] [--mem-per-worker SIZE]
+
+    :return: None
+    """
     import argparse
 
     parser = argparse.ArgumentParser(

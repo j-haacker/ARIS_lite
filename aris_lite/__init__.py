@@ -1,4 +1,8 @@
-"""Implementation of the ARIS(_lite) phenology model"""
+"""Implementation of the ARIS(_lite) phenology model
+
+This package provides functions for simulating crop phenology, water budget, and yield
+expectation using environmental and crop-specific data.
+"""
 
 __version__ = "0.1.0.dev0"
 
@@ -14,6 +18,19 @@ import xarray as xr
 
 
 def aris_1go(ds):
+    """
+    Run the full ARIS-lite workflow on a single dataset.
+
+    This function sequentially applies snow calculation, phenology computation,
+    soil water calculation, water stress, combined stress, and yield estimation
+    to the input dataset. It is intended for small datasets and returns a merged
+    xarray.Dataset with all computed variables.
+
+    :param ds: Input dataset containing meteorological and crop data.
+    :type ds: xr.Dataset
+    :return: Dataset with all ARIS-lite output variables.
+    :rtype: xr.Dataset
+    """
     from aris_lite.water_budget import calc_snow, calc_soil_water
     from aris_lite.phenology import compute_phenology_variables
     from aris_lite.yield_expectation import calc_combined_stress, calc_yield
@@ -49,6 +66,17 @@ def aris_1go(ds):
 
 
 def cli():
+    """
+    Command-line interface for running the full ARIS-lite workflow.
+
+    Parses command-line arguments for input/output paths and Dask cluster configuration,
+    then runs the full workflow and writes the output dataset.
+
+    Usage:
+        python -m aris_lite [--workers N] [--mem-per-worker SIZE] input.zarr output.zarr
+
+    :return: None
+    """
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
     from dask.distributed import Client, LocalCluster
     from textwrap import dedent
@@ -95,6 +123,19 @@ def cli():
 
 
 def extract_point_data(ds, locations):
+    """
+    Extract data for specific point locations from a dataset.
+
+    For each location provided, selects the nearest grid point in the dataset and
+    concatenates the results along a new 'location' dimension.
+
+    :param ds: Input xarray.Dataset.
+    :type ds: xr.Dataset
+    :param locations: DataFrame or similar with location names and coordinates.
+    :type locations: pd.DataFrame or similar
+    :return: Dataset with data for each specified location.
+    :rtype: xr.Dataset
+    """
     return (
         xr.concat(
             [

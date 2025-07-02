@@ -2,7 +2,9 @@
 
 """Phenology module
 
-This module computes the crop coefficients and plant heights.
+This module computes the crop coefficients (Kc) and plant heights for different crops
+based on temperature and crop-specific phenological rules. These variables are essential
+for modeling crop growth, water use, and yield.
 """
 
 __all__ = [
@@ -20,7 +22,17 @@ import xarray as xr
 
 
 class Kc_condition_atom:
-    """Internal comparator class"""
+    """
+    Internal comparator class for phenology conditions.
+
+    Represents a single comparison operation (e.g., >= threshold) to be applied
+    to a DataArray, supporting both temporal and numeric comparisons.
+
+    :param comparator: Comparison function (e.g., operator.ge).
+    :type comparator: callable
+    :param value: Value to compare against (float, pd.Timestamp, or xr.DataArray).
+    :type value: float | pd.Timestamp | xr.DataArray
+    """
 
     def __init__(
         self, comparator: callable, value: float | pd.Timestamp | xr.DataArray
@@ -51,7 +63,15 @@ class Kc_condition_atom:
 
 
 class Kc_condition:
-    """Internal class to combine comparators"""
+    """
+    Internal class to combine multiple Kc_condition_atom comparators.
+
+    Allows combining several conditions (e.g., after a date AND above a threshold)
+    to define phenological stages.
+
+    :param condition_tuple: Tuple of Kc_condition_atom instances.
+    :type condition_tuple: tuple[Kc_condition_atom]
+    """
 
     def __init__(self, condition_tuple: tuple["Kc_condition_atom"]):
         self.condition_tuple = condition_tuple
@@ -70,17 +90,21 @@ def conditional_cumulative_temperature(
     threshold: float,
     timesteps_above_threshold: int = 5,
 ) -> xr.DataArray:
-    """Internal temperature counting function
+    """
+    Calculate cumulative temperature above a threshold, starting from a given month.
 
-    :param temperature: Daily temperature time series (one year)
+    Only counts days where the temperature exceeds the threshold for a minimum number
+    of consecutive days. Used to determine phenological stage transitions.
+
+    :param temperature: Daily temperature time series (one year).
     :type temperature: xr.DataArray
-    :param start_month: Month in which to start counting
+    :param start_month: Month in which to start counting (1-12).
     :type start_month: int
-    :param threshold: "Zero-point". Positive (temperature-threshold) will be counted
+    :param threshold: Temperature threshold for counting.
     :type threshold: float
-    :param timesteps_above_threshold: Minimum number of days above threshold, defaults to 5
+    :param timesteps_above_threshold: Minimum consecutive days above threshold.
     :type timesteps_above_threshold: int, optional
-    :return: Cumulative temperature above threshold
+    :return: Cumulative temperature above threshold.
     :rtype: xr.DataArray
     """
     return xr.where(
@@ -108,15 +132,17 @@ def apply_condition_value_list(
     condition_value_list: Iterable[tuple["Kc_condition", float]],
     arr: xr.DataArray,
 ) -> xr.DataArray:
-    """Internal wrapper to assign values if condition met
+    """
+    Assign values to an array based on a list of (condition, value) pairs.
 
-    Note: Later values override earlier ones.
+    Later values override earlier ones. Used to set Kc or plant height values
+    for different phenological stages.
 
-    :param condition_value_list: List of (condition, value) pairs
-    :type condition_value_list: list[tuple[&quot;Kc_condition&quot;, float]]
-    :param arr: Input data
+    :param condition_value_list: List of (condition, value) pairs.
+    :type condition_value_list: Iterable[tuple[Kc_condition, float]]
+    :param arr: Input DataArray to assign values to.
     :type arr: xr.DataArray
-    :return: Array filled with provided values where conditions met of same shape as `arr`
+    :return: DataArray with assigned values where conditions are met.
     :rtype: xr.DataArray
     """
     out = xr.DataArray(np.nan, coords=arr.coords)
@@ -129,7 +155,18 @@ def build_Kc_factor_array(
     Kc_factor_defs: Iterable[tuple["Kc_condition", float]],
     cumT: xr.DataArray,
 ) -> xr.DataArray:
-    """Linearly interpolates apply_condition_value_list"""
+    """
+    Interpolate Kc factor values based on phenological stage definitions.
+
+    Applies condition-value pairs and linearly interpolates missing values over time.
+
+    :param Kc_factor_defs: Iterable of (condition, value) pairs for Kc.
+    :type Kc_factor_defs: Iterable[tuple[Kc_condition, float]]
+    :param cumT: Cumulative temperature DataArray.
+    :type cumT: xr.DataArray
+    :return: Interpolated Kc factor DataArray.
+    :rtype: xr.DataArray
+    """
     return apply_condition_value_list(Kc_factor_defs, cumT).interpolate_na(
         "time", "linear"
     )
@@ -139,7 +176,18 @@ def build_plant_height_array(
     plant_height_defs: Iterable[tuple["Kc_condition", float]],
     cumT: xr.DataArray,
 ) -> xr.DataArray:
-    """Zero-fills apply_condition_value_list"""
+    """
+    Assign plant height values based on phenological stage definitions.
+
+    Applies condition-value pairs and fills missing values with zero.
+
+    :param plant_height_defs: Iterable of (condition, value) pairs for plant height.
+    :type plant_height_defs: Iterable[tuple[Kc_condition, float]]
+    :param cumT: Cumulative temperature DataArray.
+    :type cumT: xr.DataArray
+    :return: Plant height DataArray.
+    :rtype: xr.DataArray
+    """
     return apply_condition_value_list(plant_height_defs, cumT).fillna(0)
 
 
@@ -147,14 +195,17 @@ def compute_phenology_variables(
     temperature: xr.DataArray,
     crops: Iterable[str] = ("winter wheat", "spring barley", "maize", "grassland"),
 ) -> xr.Dataset:
-    """Compute crop coefficients and plant heights
+    """
+    Compute crop coefficients (Kc) and plant heights for specified crops.
 
-    :param temperature: Daily surface air temperature average for one year
+    Uses temperature data and crop-specific rules to determine phenological stages,
+    then assigns Kc and plant height values accordingly.
+
+    :param temperature: Daily surface air temperature average for one year.
     :type temperature: xr.DataArray
-    :param crop_list: List of crops for which to compute, defaults to ("winter
-        wheat", "spring barley", "maize", "grassland")
-    :type crop_list: Iterable[str], optional
-    :return: Dataset containing crop coefficients and plant heights
+    :param crops: List of crops to compute phenology for.
+    :type crops: Iterable[str], optional
+    :return: Dataset containing Kc_factor and plant_height for each crop.
     :rtype: xr.Dataset
     """
     # all of winter wheat, spring barley, grain maize, potato, soybeans and a grassland (mähwiese)
@@ -408,16 +459,16 @@ def main(
     years: Iterable[int],
     crops: Iterable = ("winter wheat", "spring barley", "maize", "grassland"),
 ):
-    """Load data, compute phenology, and save output
+    """
+    Load data, compute phenology variables, and save output for specified years.
 
-    Wraps compute_phenology_variables by loading the input data and writing the
-    output to a Zarr storage.
+    For each year, loads temperature data, computes phenology variables for the given crops,
+    and writes the results to a Zarr store.
 
-    :param years: List of years to compute
+    :param years: List of years to compute.
     :type years: Iterable[int]
-    :param crop_list: List of crops to compute, defaults to ("winter wheat", "spring
-        barley", "maize", "grassland")
-    :type crop_list: Iterable, optional
+    :param crops: List of crops to compute, defaults to ("winter wheat", "spring barley", "maize", "grassland").
+    :type crops: Iterable, optional
     """
     for year in years:
         if os.path.isdir(f"../data/intermediate/{year}.zarr"):
@@ -448,6 +499,18 @@ def main(
 
 
 def main_cli():
+    """
+    Command-line interface for computing phenology variables.
+
+    Parses command-line arguments to determine which years to process and how many Dask workers to use.
+    Initializes a Dask cluster for parallel processing, handles missing data, and manages
+    workflow for phenology calculations.
+
+    Usage:
+        python phenology.py [years ...] [--workers N] [--mem-per-worker SIZE]
+
+    :return: None
+    """
     import argparse
 
     parser = argparse.ArgumentParser(description="computes stress and/or yield")
