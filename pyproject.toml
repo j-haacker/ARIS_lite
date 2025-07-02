@@ -20,6 +20,7 @@ dependencies= [
 ]
 
 [project.scripts]
+aris-1go = "aris_lite.__init__:cli"
 aris-calc-waterbudget = "aris_lite.water_budget:main_cli"
 aris-calc-pheno = "aris_lite.phenology:main_cli"
 aris-calc-yield = "aris_lite.yield_expectation:main_cli"
