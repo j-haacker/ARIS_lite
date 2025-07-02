@@ -22,12 +22,14 @@ dependencies= [
 [project.optional-dependencies]
 dev = [
     "flit",
-    "myst_parser",
     "ruff",
+]
+doc = [
+    "myst_parser",
     "sphinx",
     "sphinx-rtd-theme",
 ]
-all = ["aris_lite[dev]"]
+all = ["aris_lite[dev,doc]"]
 
 [project.scripts]
 aris-1go = "aris_lite.__init__:cli"
