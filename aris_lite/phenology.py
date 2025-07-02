@@ -279,12 +279,13 @@ def compute_phenology_variables(
         elif crop == "grassland":
             # grassland needs to be implemented slightly different
             # ! cumulative temperature thresholds do not seem to make sense because
-            #   1) 2-cuts require a warmer year than 3-cuts but are only applied in colder years
+            #   1) 2-cuts require a warmer year than 3-cuts but are only applied in
+            #      colder years
             #   2) all cut strategies only differ slightly in their end temperature sums
             Kc_out_val = 0.2
             Kc_ini_val = 0.4
-            # because the defined thresholds result in no grassland at all, I use imaginary values
-            # for testing
+            # because the defined thresholds result in no grassland at all, I use
+            # imaginary values for testing
             # cumTs = [np.cumsum(thresholds) for thresholds in [
             #     [1170, 1900],
             #     [770, 1020, 1260],
@@ -401,7 +402,7 @@ def compute_phenology_variables(
             EGS_date > pd.Timestamp(month=3, day=1, year=cumT.time[0].dt.year.values)
         )
         before_EGS = Kc_condition_atom(operator.lt, EGS_date + pd.Timedelta(days=1))
-        after_EGS = Kc_condition_atom(operator.ge, EGS_date + pd.Timedelta(days=1))
+        # after_EGS = Kc_condition_atom(operator.ge, EGS_date + pd.Timedelta(days=1))
         mid_season = Kc_condition([after_mid_season_start, before_EGS])
         # late_and_end_season = Kc_condition([after_EGS, before_out_season])
         after_late_end = Kc_condition_atom(
@@ -462,12 +463,13 @@ def main(
     """
     Load data, compute phenology variables, and save output for specified years.
 
-    For each year, loads temperature data, computes phenology variables for the given crops,
-    and writes the results to a Zarr store.
+    For each year, loads temperature data, computes phenology variables for the given
+    crops, and writes the results to a Zarr store.
 
     :param years: List of years to compute.
     :type years: Iterable[int]
-    :param crops: List of crops to compute, defaults to ("winter wheat", "spring barley", "maize", "grassland").
+    :param crops: List of crops to compute, defaults to ("winter wheat",
+                  "spring barley", "maize", "grassland").
     :type crops: Iterable, optional
     """
     for year in years:
@@ -502,9 +504,10 @@ def main_cli():
     """
     Command-line interface for computing phenology variables.
 
-    Parses command-line arguments to determine which years to process and how many Dask workers to use.
-    Initializes a Dask cluster for parallel processing, handles missing data, and manages
-    workflow for phenology calculations.
+    Parses command-line arguments to determine which years to process and how
+    many Dask workers to use. Initializes a Dask cluster for parallel
+    processing, handles missing data, and manages workflow for phenology
+    calculations.
 
     Usage:
         python phenology.py [years ...] [--workers N] [--mem-per-worker SIZE]
@@ -555,8 +558,8 @@ def main_cli():
 
     print("Sucessfully computed phenology related variables!\n")
     print(
-        "Continue by computing the soil water by running\n\t`python water_budget.py -m soil"
-        "[year1 ...]`\n"
+        "Continue by computing the soil water by running\n\t`python water_budget.py"
+        "-m soil [year1 ...]`\n"
     )
 
 

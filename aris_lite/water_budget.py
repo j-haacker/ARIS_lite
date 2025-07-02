@@ -81,15 +81,16 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     """
     Calculate evapotranspiration and soil water depletion for crops.
 
-    This function estimates the actual evapotranspiration, crop evapotranspiration (ETC),
-    and soil water depletion in different soil layers, based on crop coefficients,
-    meteorological data, and soil properties.
+    This function estimates the actual evapotranspiration, crop
+    evapotranspiration (ETC), and soil water depletion in different soil layers,
+    based on crop coefficients, meteorological data, and soil properties.
 
     :param ds: Dataset containing variables "Kc_factor", "plant_height",
         "precipitation", "wind_speed", "rel_humidity", "pot_evapotransp",
         "snowfall", and "meltwater_production".
     :type ds: xr.Dataset
-    :return: Dataset with variables "evapotranspiration", "evapo_ETC", and "soil_depletion".
+    :return: Dataset with variables "evapotranspiration", "evapo_ETC", and
+        "soil_depletion".
     :rtype: xr.Dataset
     """
     if ds.Kc_factor.isnull().all():
@@ -283,8 +284,8 @@ def main_snow(years: Iterable[int]):
             )
         else:
             print(
-                "\n! WARNING: snowcover data for previous year are missing; initializing with "
-                "zero snowcover\n"
+                "\n! WARNING: snowcover data for previous year are missing; "
+                "initializing with zero snowcover\n"
                 "consider not using data of this year for computing yield expectations\n"
             )
             main_ds["initial_snowcover"] = xr.zeros_like(
@@ -315,12 +316,13 @@ def main_cli():
     """
     Command-line interface for computing snow/melt or soil water and evapotranspiration.
 
-    Parses command-line arguments to determine which computations to perform and for which years.
-    Initializes a Dask cluster for parallel processing, handles missing data, and manages
-    workflow for snow and soil water calculations.
+    Parses command-line arguments to determine which computations to perform and
+    for which years. Initializes a Dask cluster for parallel processing, handles
+    missing data, and manages workflow for snow and soil water calculations.
 
     Usage:
-        python water_budget.py [-m MODE] [years ...] [--workers N] [--mem-per-worker SIZE]
+        python water_budget.py [-m MODE] [years ...] [--workers N]
+        [--mem-per-worker SIZE]
 
     :return: None
     """
@@ -361,8 +363,8 @@ def main_cli():
             for year in args.years
         ):
             print(
-                "Snow related variables are present, assuming you mean to have the soil part "
-                "of the water budget computed"
+                "Snow related variables are present, assuming you mean to have the soil "
+                "part of the water budget computed"
             )
             args.mode = "soil"
         else:
@@ -409,7 +411,8 @@ def main_cli():
     if args.mode == "snow":
         print(
             "Continue by computing the crop coefficients (needed to calculate the "
-            "evapotranspiration later) by running\n\t`python phenology.py [year1 ...]`\n"
+            "evapotranspiration later) by running\n\t`python phenology.py "
+            "[year1 ...]`\n"
         )
     else:
         print(

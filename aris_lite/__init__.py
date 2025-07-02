@@ -85,11 +85,10 @@ def cli():
         prog="aris-xxx",  # TODO add name
         formatter_class=RawDescriptionHelpFormatter,
         description=dedent(
-            """\
-            Calc all standard ARIS output in a single run
+            """Calc all standard ARIS output in a single run
             
-            This routine is meant for small datasets. Note that intermediately large amounts of
-            data are generated that can quickly exhaust your memory.
+            This routine is meant for small datasets. Note that intermediately large
+            amounts of data are generated that can quickly exhaust your memory.
             """
         ),
     )
