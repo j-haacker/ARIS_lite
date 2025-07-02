@@ -23,13 +23,13 @@ version = (
     .stdout.decode()
     .strip()
 )
-print(version)
+# print(version)
 git_hash = (
     subprun(f"git rev-list -n 1 {version}", shell=True, check=True, capture_output=True)
     .stdout.decode()
     .strip()
 )
-print(git_hash)
+# print(git_hash)
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -37,8 +37,9 @@ print(git_hash)
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.githubpages",
+    "sphinx.ext.viewcode",
     "myst_parser",
-    "sphinx.ext.linkcode",
+    # "sphinx.ext.linkcode",
     # 'sphinx.ext.napoleon',
 ]
 
@@ -52,8 +53,9 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
-sys.path.insert(0, str(Path("..").resolve()))
-sys.path.insert(0, str(Path("..", "..").resolve()))
+# sys.path.insert(0, str(Path("..").resolve()))
+sys.path.insert(0, str(Path("..", "aris_lite").resolve()))
+# print(list(Path("..", "aris_lite").resolve().glob("*")))
 
 
 def get_func_line_number(module, func_name) -> int:
@@ -64,6 +66,7 @@ def get_func_line_number(module, func_name) -> int:
 
 
 def linkcode_resolve(domain, info):
+    # ! apparent issue with current project structure!
     if domain != "py":
         return None
     if not info["module"]:
