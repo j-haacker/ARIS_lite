@@ -13,23 +13,23 @@ from subprocess import run as subprun
 project = "ARIS_lite"
 copyright = "2024, Jan Haacker"
 author = "Jan Haacker"
-version = (
-    subprun(
-        'git tag --sort=taggerdate | grep -e "^v" | head -1',
-        shell=True,
-        check=True,
-        capture_output=True,
-    )
-    .stdout.decode()
-    .strip()
-)
-# print(version)
-git_hash = (
-    subprun(f"git rev-list -n 1 {version}", shell=True, check=True, capture_output=True)
-    .stdout.decode()
-    .strip()
-)
-# print(git_hash)
+# version = (
+#     subprun(
+#         'git tag --sort=taggerdate | grep -e "^v" | head -1',
+#         shell=True,
+#         check=True,
+#         capture_output=True,
+#     )
+#     .stdout.decode()
+#     .strip()
+# )
+# # print(version)
+# git_hash = (
+#     subprun(f"git rev-list -n 1 {version}", shell=True, check=True, capture_output=True)
+#     .stdout.decode()
+#     .strip()
+# )
+# # print(git_hash)
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -58,26 +58,26 @@ sys.path.insert(0, str(Path("..", "aris_lite").resolve()))
 # print(list(Path("..", "aris_lite").resolve().glob("*")))
 
 
-def get_func_line_number(module, func_name) -> int:
-    with open(str(Path("..", module + ".py").resolve())) as f:
-        for num, line in enumerate(f, 1):
-            if f"def {func_name}" in line:
-                return num
+# def get_func_line_number(module, func_name) -> int:
+#     with open(str(Path("..", module + ".py").resolve())) as f:
+#         for num, line in enumerate(f, 1):
+#             if f"def {func_name}" in line:
+#                 return num
 
 
-def linkcode_resolve(domain, info):
-    # ! apparent issue with current project structure!
-    if domain != "py":
-        return None
-    if not info["module"]:
-        return None
-    filename = "/".join(info["module"].split(".")[1:])
-    if "fullname" in info:
-        anchor = "#L%d" % get_func_line_number(filename, info["fullname"])
-    else:
-        anchor = ""
-    return "https://github.com/j-haacker/ARIS_lite/blob/%s/%s.py%s" % (
-        git_hash,
-        filename,
-        anchor,
-    )
+# def linkcode_resolve(domain, info):
+#     # ! apparent issue with current project structure!
+#     if domain != "py":
+#         return None
+#     if not info["module"]:
+#         return None
+#     filename = "/".join(info["module"].split(".")[1:])
+#     if "fullname" in info:
+#         anchor = "#L%d" % get_func_line_number(filename, info["fullname"])
+#     else:
+#         anchor = ""
+#     return "https://github.com/j-haacker/ARIS_lite/blob/%s/%s.py%s" % (
+#         git_hash,
+#         filename,
+#         anchor,
+#     )
