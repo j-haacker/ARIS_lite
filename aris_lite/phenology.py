@@ -235,7 +235,7 @@ def compute_phenology_variables(
             # because the defined thresholds result in no grassland at all, I use imaginary values
             # for testing
             # cumTs = [np.cumsum(thresholds) for thresholds in [
-            #     [1170, 1800],
+            #     [1170, 1900],
             #     [770, 1020, 1260],
             #     [630, 710, 910, 850]
             # ]]
@@ -352,7 +352,7 @@ def compute_phenology_variables(
         before_EGS = Kc_condition_atom(operator.lt, EGS_date + pd.Timedelta(days=1))
         after_EGS = Kc_condition_atom(operator.ge, EGS_date + pd.Timedelta(days=1))
         mid_season = Kc_condition([after_mid_season_start, before_EGS])
-        late_and_end_season = Kc_condition([after_EGS, before_out_season])
+        # late_and_end_season = Kc_condition([after_EGS, before_out_season])
         after_late_end = Kc_condition_atom(
             operator.ge, EGS_date + pd.Timedelta(days=15)
         )
@@ -371,11 +371,11 @@ def compute_phenology_variables(
         )
 
         if crop in ["winter wheat", "spring barley"]:
-            plant_height_periods = [(mid_season, 1), (late_and_end_season, 0.2)]
+            plant_height_periods = [(mid_season, 1), (after_late_end, 0.2)]
         elif crop == "maize":
-            plant_height_periods = [(mid_season, 2), (late_and_end_season, 0.2)]
+            plant_height_periods = [(mid_season, 2), (after_late_end, 0.2)]
         elif "potato" in crop:
-            plant_height_periods = [(mid_season, 0.6), (late_and_end_season, 0)]
+            plant_height_periods = [(mid_season, 0.6), (after_late_end, 0)]
         elif crop == "grassland":
             plant_height_periods = [(end_season, 0.2)]
         else:
