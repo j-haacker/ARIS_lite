@@ -19,6 +19,16 @@ dependencies= [
   "zarr>=3",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "flit",
+    "myst_parser",
+    "ruff",
+    "sphinx",
+    "sphinx-rtd-theme",
+]
+all = ["aris_lite[dev]"]
+
 [project.scripts]
 aris-1go = "aris_lite.__init__:cli"
 aris-calc-waterbudget = "aris_lite.water_budget:main_cli"
