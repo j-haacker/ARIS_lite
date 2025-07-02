@@ -4,7 +4,7 @@ This package provides functions for simulating crop phenology, water budget, and
 expectation using environmental and crop-specific data.
 """
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0.dev1"
 
 __all__ = [
     "aris_1go",
