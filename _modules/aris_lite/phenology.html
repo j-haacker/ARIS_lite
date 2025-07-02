@@ -1,0 +1,674 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aris_lite.phenology &mdash; ARIS_lite  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ARIS_lite
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aris_lite.html">aris_lite package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ARIS_lite</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../aris_lite.html">aris_lite</a></li>
+      <li class="breadcrumb-item active">aris_lite.phenology</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aris_lite.phenology</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="sd">&quot;&quot;&quot;Phenology module</span>
+
+<span class="sd">This module computes the crop coefficients (Kc) and plant heights for different crops</span>
+<span class="sd">based on temperature and crop-specific phenological rules. These variables are essential</span>
+<span class="sd">for modeling crop growth, water use, and yield.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;main&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;compute_phenology_variables&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dask</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span> <span class="k">as</span> <span class="n">dask_arr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">operator</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Kc_condition_atom</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Internal comparator class for phenology conditions.</span>
+
+<span class="sd">    Represents a single comparison operation (e.g., &gt;= threshold) to be applied</span>
+<span class="sd">    to a DataArray, supporting both temporal and numeric comparisons.</span>
+
+<span class="sd">    :param comparator: Comparison function (e.g., operator.ge).</span>
+<span class="sd">    :type comparator: callable</span>
+<span class="sd">    :param value: Value to compare against (float, pd.Timestamp, or xr.DataArray).</span>
+<span class="sd">    :type value: float | pd.Timestamp | xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">comparator</span><span class="p">:</span> <span class="nb">callable</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span> <span class="o">|</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comparator</span> <span class="o">=</span> <span class="n">comparator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_temporal</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_datetime64_any_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_temporal</span><span class="p">:</span>
+            <span class="n">years</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">years</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span>
+                <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>  <span class="c1"># implement handling longer time series if relevant</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">):</span>
+                <span class="n">comp_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">year</span><span class="o">=</span><span class="n">years</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># self.value is derived from dataset and year does not need to be adapted</span>
+                <span class="n">comp_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">comparator</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">broadcast_like</span><span class="p">(</span><span class="n">other</span><span class="p">),</span> <span class="n">comp_val</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">comparator</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Kc_condition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Internal class to combine multiple Kc_condition_atom comparators.</span>
+
+<span class="sd">    Allows combining several conditions (e.g., after a date AND above a threshold)</span>
+<span class="sd">    to define phenological stages.</span>
+
+<span class="sd">    :param condition_tuple: Tuple of Kc_condition_atom instances.</span>
+<span class="sd">    :type condition_tuple: tuple[Kc_condition_atom]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">condition_tuple</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="s2">&quot;Kc_condition_atom&quot;</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">condition_tuple</span> <span class="o">=</span> <span class="n">condition_tuple</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+        <span class="c1"># True if all conditions met</span>
+        <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">condition_atom</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="k">for</span> <span class="n">condition_atom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition_tuple</span><span class="p">],</span>
+            <span class="n">dim</span><span class="o">=</span><span class="s2">&quot;temporary_dimension&quot;</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="s2">&quot;temporary_dimension&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">conditional_cumulative_temperature</span><span class="p">(</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">,</span>
+    <span class="n">start_month</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">timesteps_above_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate cumulative temperature above a threshold, starting from a given month.</span>
+
+<span class="sd">    Only counts days where the temperature exceeds the threshold for a minimum number</span>
+<span class="sd">    of consecutive days. Used to determine phenological stage transitions.</span>
+
+<span class="sd">    :param temperature: Daily temperature time series (one year).</span>
+<span class="sd">    :type temperature: xr.DataArray</span>
+<span class="sd">    :param start_month: Month in which to start counting (1-12).</span>
+<span class="sd">    :type start_month: int</span>
+<span class="sd">    :param threshold: Temperature threshold for counting.</span>
+<span class="sd">    :type threshold: float</span>
+<span class="sd">    :param timesteps_above_threshold: Minimum consecutive days above threshold.</span>
+<span class="sd">    :type timesteps_above_threshold: int, optional</span>
+<span class="sd">    :return: Cumulative temperature above threshold.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+            <span class="c1">#  this intransparent lines (until end) satisfy the requirement to</span>
+            <span class="c1">#  have a number of consecutive days with temperatures above a</span>
+            <span class="c1">#  threshold</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                <span class="n">temperature</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="n">start_month</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">temperature</span> <span class="o">&gt;=</span> <span class="n">threshold</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+                <span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">timesteps_above_threshold</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="o">==</span> <span class="n">timesteps_above_threshold</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+            <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># end</span>
+            <span class="n">temperature</span> <span class="o">&gt;=</span> <span class="n">threshold</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">temperature</span> <span class="o">-</span> <span class="n">threshold</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_condition_value_list</span><span class="p">(</span>
+    <span class="n">condition_value_list</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="s2">&quot;Kc_condition&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+    <span class="n">arr</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Assign values to an array based on a list of (condition, value) pairs.</span>
+
+<span class="sd">    Later values override earlier ones. Used to set Kc or plant height values</span>
+<span class="sd">    for different phenological stages.</span>
+
+<span class="sd">    :param condition_value_list: List of (condition, value) pairs.</span>
+<span class="sd">    :type condition_value_list: Iterable[tuple[Kc_condition, float]]</span>
+<span class="sd">    :param arr: Input DataArray to assign values to.</span>
+<span class="sd">    :type arr: xr.DataArray</span>
+<span class="sd">    :return: DataArray with assigned values where conditions are met.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">arr</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">cond</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">condition_value_list</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cond</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">arr</span><span class="p">),</span> <span class="n">val</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_Kc_factor_array</span><span class="p">(</span>
+    <span class="n">Kc_factor_defs</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="s2">&quot;Kc_condition&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+    <span class="n">cumT</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interpolate Kc factor values based on phenological stage definitions.</span>
+
+<span class="sd">    Applies condition-value pairs and linearly interpolates missing values over time.</span>
+
+<span class="sd">    :param Kc_factor_defs: Iterable of (condition, value) pairs for Kc.</span>
+<span class="sd">    :type Kc_factor_defs: Iterable[tuple[Kc_condition, float]]</span>
+<span class="sd">    :param cumT: Cumulative temperature DataArray.</span>
+<span class="sd">    :type cumT: xr.DataArray</span>
+<span class="sd">    :return: Interpolated Kc factor DataArray.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">apply_condition_value_list</span><span class="p">(</span><span class="n">Kc_factor_defs</span><span class="p">,</span> <span class="n">cumT</span><span class="p">)</span><span class="o">.</span><span class="n">interpolate_na</span><span class="p">(</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_plant_height_array</span><span class="p">(</span>
+    <span class="n">plant_height_defs</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="s2">&quot;Kc_condition&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+    <span class="n">cumT</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Assign plant height values based on phenological stage definitions.</span>
+
+<span class="sd">    Applies condition-value pairs and fills missing values with zero.</span>
+
+<span class="sd">    :param plant_height_defs: Iterable of (condition, value) pairs for plant height.</span>
+<span class="sd">    :type plant_height_defs: Iterable[tuple[Kc_condition, float]]</span>
+<span class="sd">    :param cumT: Cumulative temperature DataArray.</span>
+<span class="sd">    :type cumT: xr.DataArray</span>
+<span class="sd">    :return: Plant height DataArray.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">apply_condition_value_list</span><span class="p">(</span><span class="n">plant_height_defs</span><span class="p">,</span> <span class="n">cumT</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="compute_phenology_variables">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.phenology.compute_phenology_variables">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_phenology_variables</span><span class="p">(</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">,</span>
+    <span class="n">crops</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">,</span> <span class="s2">&quot;grassland&quot;</span><span class="p">),</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute crop coefficients (Kc) and plant heights for specified crops.</span>
+
+<span class="sd">    Uses temperature data and crop-specific rules to determine phenological stages,</span>
+<span class="sd">    then assigns Kc and plant height values accordingly.</span>
+
+<span class="sd">    :param temperature: Daily surface air temperature average for one year.</span>
+<span class="sd">    :type temperature: xr.DataArray</span>
+<span class="sd">    :param crops: List of crops to compute phenology for.</span>
+<span class="sd">    :type crops: Iterable[str], optional</span>
+<span class="sd">    :return: Dataset containing Kc_factor and plant_height for each crop.</span>
+<span class="sd">    :rtype: xr.Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># all of winter wheat, spring barley, grain maize, potato, soybeans and a grassland (mähwiese)</span>
+    <span class="c1"># need to be included</span>
+
+    <span class="c1"># TODO CRS should be adopted from coords</span>
+
+    <span class="n">Kc_ini_val</span> <span class="o">=</span> <span class="mf">0.4</span>
+    <span class="n">Kc_mid_val</span> <span class="o">=</span> <span class="mf">1.2</span>
+    <span class="n">Kc_end_val</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">Kc_out_val</span> <span class="o">=</span> <span class="mf">0.4</span>
+
+    <span class="n">before_growing_season</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">eq</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">before_out_season</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">lt</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">year</span><span class="o">=</span><span class="mi">999</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">out_season</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">year</span><span class="o">=</span><span class="mi">999</span><span class="p">))</span>
+
+    <span class="n">cumT_5</span> <span class="o">=</span> <span class="n">conditional_cumulative_temperature</span><span class="p">(</span>
+        <span class="n">temperature</span><span class="p">,</span> <span class="n">start_month</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">timesteps_above_threshold</span><span class="o">=</span><span class="mi">5</span>
+    <span class="p">)</span>
+    <span class="n">cumT_8</span> <span class="o">=</span> <span class="n">conditional_cumulative_temperature</span><span class="p">(</span>
+        <span class="n">temperature</span><span class="p">,</span> <span class="n">start_month</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">timesteps_above_threshold</span><span class="o">=</span><span class="mi">5</span>
+    <span class="p">)</span>
+
+    <span class="n">Kc_factor_da_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">plant_height_da_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">crop</span> <span class="ow">in</span> <span class="n">crops</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;winter wheat&quot;</span><span class="p">:</span>
+            <span class="n">mid_season_start_cumT</span> <span class="o">=</span> <span class="mi">350</span>
+            <span class="n">mid_season_end_cumT</span> <span class="o">=</span> <span class="n">mid_season_start_cumT</span> <span class="o">+</span> <span class="mi">692</span>
+            <span class="n">cumT</span> <span class="o">=</span> <span class="n">cumT_5</span>
+        <span class="k">elif</span> <span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">:</span>
+            <span class="n">mid_season_start_cumT</span> <span class="o">=</span> <span class="mi">502</span>
+            <span class="n">mid_season_end_cumT</span> <span class="o">=</span> <span class="n">mid_season_start_cumT</span> <span class="o">+</span> <span class="mi">568</span>
+            <span class="n">cumT</span> <span class="o">=</span> <span class="n">cumT_5</span>
+        <span class="k">elif</span> <span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;maize&quot;</span><span class="p">:</span>
+            <span class="n">mid_season_start_cumT</span> <span class="o">=</span> <span class="mi">249</span>
+            <span class="n">mid_season_end_cumT</span> <span class="o">=</span> <span class="n">mid_season_start_cumT</span> <span class="o">+</span> <span class="mi">1238</span>
+            <span class="n">cumT</span> <span class="o">=</span> <span class="n">cumT_8</span>
+        <span class="k">elif</span> <span class="n">crop</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;wofost potato&quot;</span><span class="p">):</span>
+            <span class="n">Kc_mid_val</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">cumT</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">temperature</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">temperature</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                    <span class="n">temperature</span><span class="o">.</span><span class="n">time</span>
+                    <span class="o">&gt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span>
+                        <span class="n">year</span><span class="o">=</span><span class="n">temperature</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">month</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">15</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+                <span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">before_growing_season_cumT</span> <span class="o">=</span> <span class="mi">170</span>
+            <span class="n">before_growing_season</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span>
+                <span class="n">operator</span><span class="o">.</span><span class="n">lt</span><span class="p">,</span> <span class="n">before_growing_season_cumT</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">crop</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;very early&quot;</span><span class="p">):</span>
+                <span class="n">mid_season_start_cumT</span> <span class="o">=</span> <span class="n">before_growing_season_cumT</span> <span class="o">+</span> <span class="mi">150</span>
+                <span class="n">mid_season_end_cumT</span> <span class="o">=</span> <span class="n">mid_season_start_cumT</span> <span class="o">+</span> <span class="mi">1250</span>
+            <span class="k">elif</span> <span class="n">crop</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;mid&quot;</span><span class="p">):</span>
+                <span class="n">mid_season_start_cumT</span> <span class="o">=</span> <span class="n">before_growing_season_cumT</span> <span class="o">+</span> <span class="mi">150</span>
+                <span class="n">mid_season_end_cumT</span> <span class="o">=</span> <span class="n">mid_season_start_cumT</span> <span class="o">+</span> <span class="mi">1500</span>
+            <span class="k">elif</span> <span class="n">crop</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;late&quot;</span><span class="p">):</span>
+                <span class="n">mid_season_start_cumT</span> <span class="o">=</span> <span class="n">before_growing_season_cumT</span> <span class="o">+</span> <span class="mi">200</span>
+                <span class="n">mid_season_end_cumT</span> <span class="o">=</span> <span class="n">mid_season_start_cumT</span> <span class="o">+</span> <span class="mi">1700</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;! WARNING: requested crop </span><span class="si">{</span><span class="n">crop</span><span class="si">}</span><span class="s2"> was not recognized and is skipped.&quot;</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+        <span class="k">elif</span> <span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;grassland&quot;</span><span class="p">:</span>
+            <span class="c1"># grassland needs to be implemented slightly different</span>
+            <span class="c1"># ! cumulative temperature thresholds do not seem to make sense because</span>
+            <span class="c1">#   1) 2-cuts require a warmer year than 3-cuts but are only applied in</span>
+            <span class="c1">#      colder years</span>
+            <span class="c1">#   2) all cut strategies only differ slightly in their end temperature sums</span>
+            <span class="n">Kc_out_val</span> <span class="o">=</span> <span class="mf">0.2</span>
+            <span class="n">Kc_ini_val</span> <span class="o">=</span> <span class="mf">0.4</span>
+            <span class="c1"># because the defined thresholds result in no grassland at all, I use</span>
+            <span class="c1"># imaginary values for testing</span>
+            <span class="c1"># cumTs = [np.cumsum(thresholds) for thresholds in [</span>
+            <span class="c1">#     [1170, 1900],</span>
+            <span class="c1">#     [770, 1020, 1260],</span>
+            <span class="c1">#     [630, 710, 910, 850]</span>
+            <span class="c1"># ]]</span>
+            <span class="n">cumTs</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">thresholds</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">thresholds</span> <span class="ow">in</span> <span class="p">[[</span><span class="mi">870</span><span class="p">,</span> <span class="mi">800</span><span class="p">],</span> <span class="p">[</span><span class="mi">770</span><span class="p">,</span> <span class="mi">820</span><span class="p">,</span> <span class="mi">860</span><span class="p">],</span> <span class="p">[</span><span class="mi">630</span><span class="p">,</span> <span class="mi">710</span><span class="p">,</span> <span class="mi">710</span><span class="p">,</span> <span class="mi">750</span><span class="p">]]</span>
+            <span class="p">]</span>
+            <span class="n">group_output_collector</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">group_output_collector2</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">for</span> <span class="p">(</span>
+                    <span class="n">_</span><span class="p">,</span>
+                    <span class="n">group</span><span class="p">,</span>
+                <span class="p">)</span> <span class="ow">in</span> <span class="n">cumT_5</span><span class="o">.</span><span class="n">groupby_bins</span><span class="p">(</span>  <span class="c1"># FIXME wrap in .map_blocks if chunked</span>
+                    <span class="n">cumT_5</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cumT_5</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="o">.</span><span class="n">values</span><span class="si">}</span><span class="s2">-11-30&quot;</span><span class="p">),</span>
+                    <span class="p">[</span><span class="n">sublist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span> <span class="n">cumTs</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">99999</span><span class="p">],</span>
+                <span class="p">):</span>
+                    <span class="n">Kc_factor_periods</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="p">(</span><span class="n">before_growing_season</span><span class="p">,</span> <span class="n">Kc_ini_val</span><span class="p">),</span>
+                        <span class="p">(</span>
+                            <span class="n">Kc_condition_atom</span><span class="p">(</span>
+                                <span class="n">operator</span><span class="o">.</span><span class="n">lt</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">year</span><span class="o">=</span><span class="mi">999</span><span class="p">)</span>
+                            <span class="p">),</span>
+                            <span class="n">Kc_out_val</span><span class="p">,</span>
+                        <span class="p">),</span>
+                    <span class="p">]</span>
+                    <span class="k">for</span> <span class="n">cumT_threshold</span> <span class="ow">in</span> <span class="n">cumTs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">):</span>
+                        <span class="n">tmp_EGS</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span>
+                            <span class="p">(</span><span class="n">group</span> <span class="o">&lt;</span> <span class="n">cumT_threshold</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+                        <span class="p">]</span><span class="o">.</span><span class="n">time</span>
+                        <span class="n">Kc_factor_periods</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="p">(</span><span class="n">Kc_condition_atom</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">eq</span><span class="p">,</span> <span class="n">tmp_EGS</span><span class="p">),</span> <span class="mf">1.2</span><span class="p">),</span>
+                                <span class="p">(</span>
+                                    <span class="n">Kc_condition_atom</span><span class="p">(</span>
+                                        <span class="n">operator</span><span class="o">.</span><span class="n">eq</span><span class="p">,</span> <span class="n">tmp_EGS</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                                    <span class="p">),</span>
+                                    <span class="mf">0.4</span><span class="p">,</span>
+                                <span class="p">),</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="n">Kc_factor_periods</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="p">(</span>
+                                <span class="n">Kc_condition_atom</span><span class="p">(</span>
+                                    <span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span> <span class="n">tmp_EGS</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                                <span class="p">),</span>
+                                <span class="mf">0.4</span><span class="p">,</span>
+                            <span class="p">),</span>
+                            <span class="p">(</span><span class="n">out_season</span><span class="p">,</span> <span class="n">Kc_out_val</span><span class="p">),</span>
+                        <span class="p">]</span>
+                    <span class="p">)</span>
+                    <span class="n">group_output_collector</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">build_Kc_factor_array</span><span class="p">(</span><span class="n">Kc_factor_periods</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">end_season</span> <span class="o">=</span> <span class="n">Kc_condition</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">Kc_condition_atom</span><span class="p">(</span>
+                                <span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span> <span class="n">tmp_EGS</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                            <span class="p">),</span>
+                            <span class="n">before_out_season</span><span class="p">,</span>
+                        <span class="p">]</span>
+                    <span class="p">)</span>
+                    <span class="n">group_output_collector2</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">build_plant_height_array</span><span class="p">([(</span><span class="n">end_season</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)],</span> <span class="n">group</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="n">Kc_factor_da_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">group_output_collector</span><span class="p">,</span> <span class="n">group_output_collector</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="o">.</span><span class="n">sortby</span><span class="p">(</span><span class="n">group_output_collector</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="o">.</span><span class="n">unstack</span><span class="p">()</span>
+                    <span class="o">.</span><span class="n">reindex_like</span><span class="p">(</span><span class="n">cumT_5</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">crop</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">))</span>
+                <span class="p">)</span>
+                <span class="n">plant_height_da_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                        <span class="n">group_output_collector2</span><span class="p">,</span> <span class="n">group_output_collector</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="p">)</span>
+                    <span class="o">.</span><span class="n">sortby</span><span class="p">(</span><span class="n">group_output_collector</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="o">.</span><span class="n">unstack</span><span class="p">()</span>
+                    <span class="o">.</span><span class="n">reindex_like</span><span class="p">(</span><span class="n">cumT_5</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">crop</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">))</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;None of the data falls within bins with edges&quot;</span><span class="p">):</span>
+                    <span class="n">Kc_factor_da_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">cumT_5</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                            <span class="n">crop</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">plant_height_da_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">cumT_5</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                            <span class="n">crop</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">err</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! WARNING: requested crop </span><span class="si">{</span><span class="n">crop</span><span class="si">}</span><span class="s2"> was not recognized and is skipped.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">after_mid_season_start</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span> <span class="n">mid_season_start_cumT</span><span class="p">)</span>
+        <span class="n">before_mid_season_end</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">le</span><span class="p">,</span> <span class="n">mid_season_end_cumT</span><span class="p">)</span>
+        <span class="n">EGS_date</span> <span class="o">=</span> <span class="n">cumT</span><span class="p">[</span>
+            <span class="n">before_mid_season_end</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">cumT</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">time</span>
+        <span class="c1"># set EGS_date to nan where applicable</span>
+        <span class="n">EGS_date</span> <span class="o">=</span> <span class="n">EGS_date</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">EGS_date</span> <span class="o">&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="n">month</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">year</span><span class="o">=</span><span class="n">cumT</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">before_EGS</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">lt</span><span class="p">,</span> <span class="n">EGS_date</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># after_EGS = Kc_condition_atom(operator.ge, EGS_date + pd.Timedelta(days=1))</span>
+        <span class="n">mid_season</span> <span class="o">=</span> <span class="n">Kc_condition</span><span class="p">([</span><span class="n">after_mid_season_start</span><span class="p">,</span> <span class="n">before_EGS</span><span class="p">])</span>
+        <span class="c1"># late_and_end_season = Kc_condition([after_EGS, before_out_season])</span>
+        <span class="n">after_late_end</span> <span class="o">=</span> <span class="n">Kc_condition_atom</span><span class="p">(</span>
+            <span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span> <span class="n">EGS_date</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">end_season</span> <span class="o">=</span> <span class="n">Kc_condition</span><span class="p">([</span><span class="n">after_late_end</span><span class="p">,</span> <span class="n">before_out_season</span><span class="p">])</span>
+
+        <span class="n">Kc_factor_periods</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">before_growing_season</span><span class="p">,</span> <span class="n">Kc_ini_val</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">mid_season</span><span class="p">,</span> <span class="n">Kc_mid_val</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">end_season</span><span class="p">,</span> <span class="n">Kc_end_val</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">out_season</span><span class="p">,</span> <span class="n">Kc_out_val</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="n">Kc_factor_da_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">build_Kc_factor_array</span><span class="p">(</span><span class="n">Kc_factor_periods</span><span class="p">,</span> <span class="n">cumT</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                <span class="n">crop</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">crop</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">]:</span>
+            <span class="n">plant_height_periods</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mid_season</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">after_late_end</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;maize&quot;</span><span class="p">:</span>
+            <span class="n">plant_height_periods</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mid_season</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="n">after_late_end</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="s2">&quot;potato&quot;</span> <span class="ow">in</span> <span class="n">crop</span><span class="p">:</span>
+            <span class="n">plant_height_periods</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mid_season</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">),</span> <span class="p">(</span><span class="n">after_late_end</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;grassland&quot;</span><span class="p">:</span>
+            <span class="n">plant_height_periods</span> <span class="o">=</span> <span class="p">[(</span><span class="n">end_season</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="s2">&quot;If you see this error, implement plant height for missing crop.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">plant_height_da_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">build_plant_height_array</span><span class="p">(</span><span class="n">plant_height_periods</span><span class="p">,</span> <span class="n">cumT</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                <span class="n">crop</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">Kc_factor_da_list</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">Kc_factor_da_list</span><span class="p">,</span> <span class="s2">&quot;crop&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">crop</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;crop&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">crops</span><span class="p">)))</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;Kc_factor&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">plant_height_da_list</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">plant_height_da_list</span><span class="p">,</span> <span class="s2">&quot;crop&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">crop</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;crop&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">crops</span><span class="p">)))</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;plant_height&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">Kc_factor_da_list</span><span class="p">,</span> <span class="n">plant_height_da_list</span><span class="p">])</span>
+    <span class="c1"># print(out, flush=True)</span>
+    <span class="c1"># raise</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.phenology.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span>
+    <span class="n">years</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">crops</span><span class="p">:</span> <span class="n">Iterable</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">,</span> <span class="s2">&quot;grassland&quot;</span><span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load data, compute phenology variables, and save output for specified years.</span>
+
+<span class="sd">    For each year, loads temperature data, computes phenology variables for the given</span>
+<span class="sd">    crops, and writes the results to a Zarr store.</span>
+
+<span class="sd">    :param years: List of years to compute.</span>
+<span class="sd">    :type years: Iterable[int]</span>
+<span class="sd">    :param crops: List of crops to compute, defaults to (&quot;winter wheat&quot;,</span>
+<span class="sd">                  &quot;spring barley&quot;, &quot;maize&quot;, &quot;grassland&quot;).</span>
+<span class="sd">    :type crops: Iterable, optional</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">years</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! WARNING: </span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr already exists. Skipping.&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating phenology variables for year&quot;</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="s2">&quot;and crops&quot;</span><span class="p">,</span> <span class="n">crops</span><span class="p">)</span>
+        <span class="n">T2m</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/input/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">air_temperature</span>
+        <span class="k">if</span> <span class="n">T2m</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">calendar</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;noleap&quot;</span><span class="p">,</span>
+        <span class="p">]:</span>
+            <span class="n">original_calendar</span> <span class="o">=</span> <span class="n">T2m</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">calendar</span>
+            <span class="n">T2m</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">coding</span><span class="o">.</span><span class="n">calendar_ops</span><span class="o">.</span><span class="n">convert_calendar</span><span class="p">(</span><span class="n">T2m</span><span class="p">,</span> <span class="s2">&quot;gregorian&quot;</span><span class="p">)</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">dask_arr</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">crops</span><span class="p">),</span> <span class="o">*</span><span class="n">T2m</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;f4&quot;</span><span class="p">),</span>
+            <span class="n">coords</span><span class="o">=</span><span class="n">T2m</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">({</span><span class="s2">&quot;crop&quot;</span><span class="p">:</span> <span class="n">crops</span><span class="p">})</span><span class="o">.</span><span class="n">coords</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">crop</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">time</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">41</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">37</span><span class="p">))</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;Kc_factor&quot;</span><span class="p">),</span> <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;plant_height&quot;</span><span class="p">)]</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">T2m</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">compute_phenology_variables</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">crops</span><span class="p">),</span> <span class="n">template</span><span class="o">=</span><span class="n">template</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;original_calendar&quot;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">():</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">coding</span><span class="o">.</span><span class="n">calendar_ops</span><span class="o">.</span><span class="n">convert_calendar</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">original_calendar</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">drop_encoding</span><span class="p">()</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a-&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main_cli</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Command-line interface for computing phenology variables.</span>
+
+<span class="sd">    Parses command-line arguments to determine which years to process and how</span>
+<span class="sd">    many Dask workers to use. Initializes a Dask cluster for parallel</span>
+<span class="sd">    processing, handles missing data, and manages workflow for phenology</span>
+<span class="sd">    calculations.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        python phenology.py [years ...] [--workers N] [--mem-per-worker SIZE]</span>
+
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;computes stress and/or yield&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;years&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;*&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2021</span><span class="p">,</span> <span class="mi">2023</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;list years to compute&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;number of dask workers&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mem-per-worker&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;3Gb&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;memory per worker, e.g. &quot;5.67Gb&quot;&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">years</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalCluster</span><span class="p">,</span> <span class="n">Client</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting dask&quot;</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
+        <span class="n">LocalCluster</span><span class="p">(</span>
+            <span class="n">n_workers</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">workers</span><span class="p">,</span> <span class="n">memory_limit</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mem_per_worker</span><span class="p">,</span> <span class="n">death_timeout</span><span class="o">=</span><span class="mi">30</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... access the dashboard at&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="n">dashboard_link</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">main</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Unable to find group&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">! ERROR: data missing. Verify that the necessary data are available.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Closed dask client</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Sucessfully computed phenology related variables!</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Continue by computing the soil water by running</span><span class="se">\n\t</span><span class="s2">`python water_budget.py&quot;</span>
+        <span class="s2">&quot;-m soil [year1 ...]`</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main_cli</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jan Haacker.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

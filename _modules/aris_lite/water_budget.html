@@ -1,0 +1,538 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aris_lite.water_budget &mdash; ARIS_lite  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ARIS_lite
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aris_lite.html">aris_lite package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ARIS_lite</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../aris_lite.html">aris_lite</a></li>
+      <li class="breadcrumb-item active">aris_lite.water_budget</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aris_lite.water_budget</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="sd">&quot;&quot;&quot;Water budget module</span>
+
+<span class="sd">This module computes the snow/rain fraction, snow cover, evapotranspiration,</span>
+<span class="sd">and soil water availability for crop modeling. It provides functions to process</span>
+<span class="sd">meteorological and crop data to estimate water-related variables critical for</span>
+<span class="sd">crop growth and yield estimation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;main_snow&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;main_soil_water&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;calc_snow&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;calc_soil_water&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dask.array</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dask_arr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">snowmaus</span>
+
+
+<div class="viewcode-block" id="calc_snow">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.water_budget.calc_snow">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calc_snow</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate snowfall, meltwater production, and snow cover over time.</span>
+
+<span class="sd">    This function simulates the snow accumulation and melting process based on</span>
+<span class="sd">    precipitation and temperature data. It returns a dataset with snowfall,</span>
+<span class="sd">    meltwater production, and snow cover for each time step.</span>
+
+<span class="sd">    :param ds: Dataset containing variables &quot;precipitation&quot;, &quot;min_air_temp&quot;,</span>
+<span class="sd">        &quot;max_air_temp&quot;, and &quot;initial_snowcover&quot;.</span>
+<span class="sd">    :type ds: xr.Dataset</span>
+<span class="sd">    :return: Dataset with variables &quot;snowfall&quot;, &quot;meltwater_production&quot;, and &quot;snowcover&quot;.</span>
+<span class="sd">    :rtype: xr.Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">dask_arr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;f4&quot;</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">41</span><span class="p">)),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span>
+            <span class="n">coords</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">coords</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;snowfall&quot;</span><span class="p">),</span>
+                <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;meltwater_production&quot;</span><span class="p">),</span>
+                <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;snowcover&quot;</span><span class="p">),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+    <span class="n">potential_melt</span> <span class="o">=</span> <span class="n">snowmaus</span><span class="o">.</span><span class="n">meltwater_production</span><span class="p">(</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">min_air_temp</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span><span class="o">.</span><span class="n">values</span>
+    <span class="p">)</span>
+    <span class="n">snowfall</span> <span class="o">=</span> <span class="n">snowmaus</span><span class="o">.</span><span class="n">snowfall</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">min_air_temp</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">melt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">snowfall</span><span class="p">)</span>
+    <span class="n">snowcover</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">snowfall</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">snowcover</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">ds</span><span class="o">.</span><span class="n">initial_snowcover</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-=</span> <span class="n">snowmaus</span><span class="o">.</span><span class="n">sublimed_snowcover</span><span class="p">(</span><span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">snowfall</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">snowfall</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">melt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">potential_melt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">potential_melt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">snowcover</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">melt</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">melt</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">snowcover</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">min_air_temp</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">snowcover</span><span class="p">)</span>
+    <span class="n">melt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">min_air_temp</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">melt</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;snowfall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">snowfall</span><span class="p">),</span>
+            <span class="s2">&quot;meltwater_production&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">melt</span><span class="p">),</span>
+            <span class="s2">&quot;snowcover&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="n">snowcover</span><span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">coords</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">coords</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calc_soil_water">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.water_budget.calc_soil_water">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calc_soil_water</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate evapotranspiration and soil water depletion for crops.</span>
+
+<span class="sd">    This function estimates the actual evapotranspiration, crop</span>
+<span class="sd">    evapotranspiration (ETC), and soil water depletion in different soil layers,</span>
+<span class="sd">    based on crop coefficients, meteorological data, and soil properties.</span>
+
+<span class="sd">    :param ds: Dataset containing variables &quot;Kc_factor&quot;, &quot;plant_height&quot;,</span>
+<span class="sd">        &quot;precipitation&quot;, &quot;wind_speed&quot;, &quot;rel_humidity&quot;, &quot;pot_evapotransp&quot;,</span>
+<span class="sd">        &quot;snowfall&quot;, and &quot;meltwater_production&quot;.</span>
+<span class="sd">    :type ds: xr.Dataset</span>
+<span class="sd">    :return: Dataset with variables &quot;evapotranspiration&quot;, &quot;evapo_ETC&quot;, and</span>
+<span class="sd">        &quot;soil_depletion&quot;.</span>
+<span class="sd">    :rtype: xr.Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">dask_arr</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="o">*</span><span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span>
+                <span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">41</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="o">*</span><span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="s2">&quot;layer&quot;</span><span class="p">],</span>
+            <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+                <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">coords</span><span class="p">},</span>
+                <span class="s2">&quot;layer&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;evapotranspiration&quot;</span><span class="p">),</span>
+                <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;evapo_ETC&quot;</span><span class="p">),</span>
+                <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;soil_depletion&quot;</span><span class="p">),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+    <span class="c1"># activate one of the two implementations</span>
+    <span class="c1"># # below implements the formula from the Schaumber Thesis</span>
+    <span class="c1"># pot_interc_precip = dask_arr.maximum(</span>
+    <span class="c1">#     1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp</span>
+    <span class="c1"># )</span>
+    <span class="c1"># below implements the (original) ARIS interception</span>
+    <span class="c1"># ! assumes Kc is 1.2 between mid and end season</span>
+    <span class="c1"># ! makes irrelevant mistake after end season (=0.13 instead 0.1)</span>
+    <span class="n">pot_interc_precip</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span> <span class="o">/</span> <span class="mi">3</span>
+    <span class="n">liq_precip</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span> <span class="o">-</span> <span class="n">ds</span><span class="o">.</span><span class="n">snowfall</span>
+    <span class="n">incoming_water</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">pot_interc_precip</span> <span class="o">&lt;=</span> <span class="n">liq_precip</span><span class="p">,</span> <span class="n">liq_precip</span> <span class="o">-</span> <span class="n">pot_interc_precip</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="p">)</span>
+    <span class="n">incoming_water</span> <span class="o">+=</span> <span class="n">ds</span><span class="o">.</span><span class="n">meltwater_production</span>
+    <span class="n">root_factor</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">([</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span> <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;layer&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;sub&quot;</span><span class="p">]})</span>
+    <span class="n">ET0</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">pot_evapotransp</span> <span class="o">*</span> <span class="n">root_factor</span>
+    <span class="n">climEff</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">plant_height</span><span class="o">.</span><span class="n">isnull</span><span class="p">(),</span>
+        <span class="mi">0</span><span class="p">,</span>
+        <span class="p">(</span><span class="mf">0.04</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">wind_speed</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="o">-</span> <span class="p">(</span><span class="mf">0.004</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">rel_humidity</span> <span class="o">-</span> <span class="mi">45</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">plant_height</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="p">)</span>  <span class="c1"># !! should probably be bounded</span>
+    <span class="n">Kc_plus_climEff</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span> <span class="o">+</span> <span class="n">climEff</span>
+    <span class="n">ETC</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span> <span class="o">*</span> <span class="n">ET0</span>
+
+    <span class="n">D_r</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float32&quot;</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="o">*</span><span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="s2">&quot;layer&quot;</span><span class="p">],</span>
+        <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">Kc_plus_climEff</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">coords</span><span class="p">},</span>
+            <span class="s2">&quot;layer&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;soil_depletion&quot;</span><span class="p">)</span>
+    <span class="n">ET</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="o">*</span><span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float32&quot;</span><span class="p">),</span>
+        <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="o">*</span><span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="s2">&quot;layer&quot;</span><span class="p">],</span>
+        <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">Kc_plus_climEff</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">coords</span><span class="p">},</span>
+            <span class="s2">&quot;layer&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;evapotranspiration&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">incoming_water</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">~</span><span class="n">incoming_water</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">12</span><span class="p">])]</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">t</span> <span class="o">==</span> <span class="n">incoming_water</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">p__upper_lim</span><span class="p">,</span> <span class="n">p__lower_lim</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.8</span>
+        <span class="n">p_T</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="p">[</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">],</span>
+            <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;crop&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;maize&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;grassland&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;wofost potato very early&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;wofost potato mid&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;wofost potato late&quot;</span><span class="p">,</span>
+                <span class="p">]</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">p_T</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.04</span> <span class="o">*</span> <span class="p">(</span><span class="mi">5</span> <span class="o">-</span> <span class="n">ETC</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">t</span><span class="p">)))</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">p</span> <span class="o">&lt;</span> <span class="n">p__lower_lim</span><span class="p">,</span> <span class="n">p__lower_lim</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">p</span> <span class="o">&gt;</span> <span class="n">p__upper_lim</span><span class="p">,</span> <span class="n">p__upper_lim</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">Ks_i</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">D_r</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="p">)</span><span class="o">.</span><span class="n">values</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p</span><span class="p">)</span>
+        <span class="n">Ks_i</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Ks_i</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Ks_i</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">Ks_i</span><span class="p">))</span>
+        <span class="n">ET</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">Ks_i</span> <span class="o">*</span> <span class="n">ET0</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">t</span><span class="p">)</span> <span class="o">*</span> <span class="n">Kc_plus_climEff</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">toplayerimbalance</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">incoming_water</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">D_r</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">layer</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">ET</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">maybe_new_top_layer_value</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">toplayerimbalance</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">layer</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">),</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">layer</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">),</span>
+            <span class="o">-</span><span class="n">toplayerimbalance</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">DP</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">toplayerimbalance</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">toplayerimbalance</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">sublayerimbalance</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">DP</span>
+            <span class="o">-</span> <span class="n">D_r</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">layer</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">ET</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">maybe_new_sub_layer_value</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">sublayerimbalance</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">layer</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">),</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">layer</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">),</span>
+            <span class="o">-</span><span class="n">sublayerimbalance</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">potential_depletion</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">maybe_new_top_layer_value</span><span class="p">,</span> <span class="n">maybe_new_sub_layer_value</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="s2">&quot;layer&quot;</span>
+        <span class="p">)</span>
+        <span class="n">D_r</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">potential_depletion</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">potential_depletion</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ET</span><span class="p">,</span> <span class="n">ETC</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;evapo_ETC&quot;</span><span class="p">),</span> <span class="n">D_r</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="main_soil_water">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.water_budget.main_soil_water">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main_soil_water</span><span class="p">(</span><span class="n">years</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load input data and write soil water and evapotranspiration results to Zarr store.</span>
+
+<span class="sd">    For each year, this function loads the necessary datasets, computes soil water</span>
+<span class="sd">    depletion and evapotranspiration, and saves the results.</span>
+
+<span class="sd">    :param years: List of years to compute.</span>
+<span class="sd">    :type years: Iterable[int]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">years</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr/soil_depletion&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! WARNING: </span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr/soil_depletion already exists. Skipping.&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating soil water and evapotranspiration for year&quot;</span><span class="p">,</span> <span class="n">year</span><span class="p">)</span>
+        <span class="n">pheno_ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/intermediate/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span>
+        <span class="p">)</span>
+        <span class="n">snow_ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span>
+        <span class="p">)</span>
+        <span class="n">meteo_ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/input/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="n">TAW</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataarray</span><span class="p">(</span><span class="s2">&quot;../data/input/soil_taw.nc&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="n">main_ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">pheno_ds</span><span class="p">,</span> <span class="n">meteo_ds</span><span class="p">,</span> <span class="n">TAW</span><span class="p">,</span> <span class="n">snow_ds</span><span class="p">])</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span>
+            <span class="p">[</span><span class="s2">&quot;lambert_conformal_conic&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">dask_arr</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="o">*</span><span class="n">main_ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;f4&quot;</span><span class="p">,</span>
+                <span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">41</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="o">*</span><span class="n">main_ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="s2">&quot;layer&quot;</span><span class="p">],</span>
+            <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+                <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">main_ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">main_ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">coords</span><span class="p">},</span>
+                <span class="s2">&quot;layer&quot;</span><span class="p">:</span> <span class="n">TAW</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">D_r</span> <span class="o">=</span> <span class="n">main_ds</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span>
+            <span class="n">calc_soil_water</span><span class="p">,</span>
+            <span class="n">template</span><span class="o">=</span><span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;evapotranspiration&quot;</span><span class="p">),</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;evapo_ETC&quot;</span><span class="p">),</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;soil_depletion&quot;</span><span class="p">),</span>
+                <span class="p">]</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">D_r</span><span class="o">.</span><span class="n">drop_encoding</span><span class="p">()</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a-&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main_snow">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.water_budget.main_snow">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main_snow</span><span class="p">(</span><span class="n">years</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load input data and write snow-related results to Zarr store.</span>
+
+<span class="sd">    For each year, this function loads meteorological data, initializes snow cover,</span>
+<span class="sd">    computes snowfall and meltwater production, and saves the results.</span>
+
+<span class="sd">    :param years: List of years to compute.</span>
+<span class="sd">    :type years: Iterable[int]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">years</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! WARNING: snow_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr already exists. Skipping.&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">main_ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/input/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">.zarr&quot;</span>
+        <span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;snowcover&quot;</span> <span class="ow">in</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">):</span>
+            <span class="n">main_ds</span><span class="p">[</span><span class="s2">&quot;initial_snowcover&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">.zarr&quot;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">snowcover</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># next step is necessary! somehow this `xr.where` changes how the data looks internally</span>
+            <span class="n">main_ds</span><span class="p">[</span><span class="s2">&quot;precipitation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">main_ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">==</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">main_ds</span><span class="o">.</span><span class="n">precipitation</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">! WARNING: snowcover data for previous year are missing; &quot;</span>
+                <span class="s2">&quot;initializing with zero snowcover</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;consider not using data of this year for computing yield expectations</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">main_ds</span><span class="p">[</span><span class="s2">&quot;initial_snowcover&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span>
+                <span class="n">main_ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">main_ds</span><span class="p">[</span><span class="s2">&quot;precipitation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">main_ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">main_ds</span><span class="o">.</span><span class="n">precipitation</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating snow related variables for year&quot;</span><span class="p">,</span> <span class="n">year</span><span class="p">)</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">dask_arr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">main_ds</span><span class="o">.</span><span class="n">precipitation</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;f4&quot;</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">41</span><span class="p">)),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="n">main_ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span>
+            <span class="n">coords</span><span class="o">=</span><span class="n">main_ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">coords</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">main_ds</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span>
+            <span class="n">calc_snow</span><span class="p">,</span>
+            <span class="n">template</span><span class="o">=</span><span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;snowfall&quot;</span><span class="p">),</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;meltwater_production&quot;</span><span class="p">),</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;snowcover&quot;</span><span class="p">),</span>
+                <span class="p">]</span>
+            <span class="p">),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">drop_encoding</span><span class="p">()</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main_cli</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Command-line interface for computing snow/melt or soil water and evapotranspiration.</span>
+
+<span class="sd">    Parses command-line arguments to determine which computations to perform and</span>
+<span class="sd">    for which years. Initializes a Dask cluster for parallel processing, handles</span>
+<span class="sd">    missing data, and manages workflow for snow and soil water calculations.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        python water_budget.py [-m MODE] [years ...] [--workers N]</span>
+<span class="sd">        [--mem-per-worker SIZE]</span>
+
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;computes either the snow/melt or the soil water &quot;</span>
+        <span class="s2">&quot;and evapotranspiration&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--mode&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;snow&quot;</span><span class="p">,</span> <span class="s2">&quot;soil&quot;</span><span class="p">,</span> <span class="s2">&quot;auto&quot;</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;choose which part of the water budget to compute&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;years&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;*&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2021</span><span class="p">,</span> <span class="mi">2023</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;list years to compute&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;number of dask workers&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mem-per-worker&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;2Gb&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;memory per worker, e.g. &quot;5.67Gb&quot;&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">years</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">years</span>
+        <span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;Snow related variables are present, assuming you mean to have the soil &quot;</span>
+                <span class="s2">&quot;part of the water budget computed&quot;</span>
+            <span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;soil&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;Snow related variables are missing for year(s):&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">years</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/snow_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Computing these now.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;snow&quot;</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalCluster</span><span class="p">,</span> <span class="n">Client</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting dask (</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">workers</span><span class="si">}</span><span class="s2"> CPUs, each </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">mem_per_worker</span><span class="si">}</span><span class="s2"> RAM)&quot;</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
+        <span class="n">LocalCluster</span><span class="p">(</span>
+            <span class="n">n_workers</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">workers</span><span class="p">,</span> <span class="n">memory_limit</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mem_per_worker</span><span class="p">,</span> <span class="n">death_timeout</span><span class="o">=</span><span class="mi">30</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... access the dashboard at&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="n">dashboard_link</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;snow&quot;</span><span class="p">:</span>
+            <span class="n">main_snow</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">main_soil_water</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Unable to find group&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">! ERROR: data missing. Verify that the necessary data are available.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Closed dask client</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sucessfully computed </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2"> related variables!</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;snow&quot;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Continue by computing the crop coefficients (needed to calculate the &quot;</span>
+            <span class="s2">&quot;evapotranspiration later) by running</span><span class="se">\n\t</span><span class="s2">`python phenology.py &quot;</span>
+            <span class="s2">&quot;[year1 ...]`</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Continue by computing the expected yield by running</span><span class="se">\n\t</span><span class="s2">`python &quot;</span>
+            <span class="s2">&quot;yield_expectation.py [year1 ...]`</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main_cli</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jan Haacker.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

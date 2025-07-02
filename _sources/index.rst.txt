@@ -2,7 +2,7 @@ Documentation of ARIS_lite
 ==========================
 
 .. toctree::
-   ARIS_lite
+   aris_lite
 
 -------
 

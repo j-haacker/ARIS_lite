@@ -1,0 +1,254 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aris_lite &mdash; ARIS_lite  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ARIS_lite
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../aris_lite.html">aris_lite package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ARIS_lite</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">aris_lite</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aris_lite</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Implementation of the ARIS(_lite) phenology model</span>
+
+<span class="sd">This package provides functions for simulating crop phenology, water budget, and yield</span>
+<span class="sd">expectation using environmental and crop-specific data.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.1.0.dev0&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;aris_1go&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;extract_point_data&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phenology&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;water_budget&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;yield_expectation&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+
+<div class="viewcode-block" id="aris_1go">
+<a class="viewcode-back" href="../aris_lite.html#aris_lite.aris_1go">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aris_1go</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run the full ARIS-lite workflow on a single dataset.</span>
+
+<span class="sd">    This function sequentially applies snow calculation, phenology computation,</span>
+<span class="sd">    soil water calculation, water stress, combined stress, and yield estimation</span>
+<span class="sd">    to the input dataset. It is intended for small datasets and returns a merged</span>
+<span class="sd">    xarray.Dataset with all computed variables.</span>
+
+<span class="sd">    :param ds: Input dataset containing meteorological and crop data.</span>
+<span class="sd">    :type ds: xr.Dataset</span>
+<span class="sd">    :return: Dataset with all ARIS-lite output variables.</span>
+<span class="sd">    :rtype: xr.Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">aris_lite.water_budget</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_snow</span><span class="p">,</span> <span class="n">calc_soil_water</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">aris_lite.phenology</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_phenology_variables</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">aris_lite.yield_expectation</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_combined_stress</span><span class="p">,</span> <span class="n">calc_yield</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">calc_snow</span><span class="p">(</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+                    <span class="n">initial_snowcover</span><span class="o">=</span><span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">precipitation</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+                <span class="p">)</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">(),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">compute_phenology_variables</span><span class="p">(</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">air_temperature</span><span class="p">,</span>
+                <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">,</span> <span class="s2">&quot;grassland&quot;</span><span class="p">],</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">(),</span>
+            <span class="c1"># [&quot;wofost potato very early&quot;, &quot;wofost potato mid&quot;, &quot;wofost potato late&quot;]</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">calc_soil_water</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()])</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+        <span class="n">waterstress</span><span class="o">=</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">soil_depletion</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">&quot;layer&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">calc_combined_stress</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()])</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">calc_yield</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">combined_stress</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()])</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">cli</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Command-line interface for running the full ARIS-lite workflow.</span>
+
+<span class="sd">    Parses command-line arguments for input/output paths and Dask cluster configuration,</span>
+<span class="sd">    then runs the full workflow and writes the output dataset.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        python -m aris_lite [--workers N] [--mem-per-worker SIZE] input.zarr output.zarr</span>
+
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">argparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArgumentParser</span><span class="p">,</span> <span class="n">RawDescriptionHelpFormatter</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">LocalCluster</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">textwrap</span><span class="w"> </span><span class="kn">import</span> <span class="n">dedent</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;aris-xxx&quot;</span><span class="p">,</span>  <span class="c1"># TODO add name</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">dedent</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Calc all standard ARIS output in a single run</span>
+<span class="sd">            </span>
+<span class="sd">            This routine is meant for small datasets. Note that intermediately large</span>
+<span class="sd">            amounts of data are generated that can quickly exhaust your memory.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;number of dask workers&quot;</span>
+    <span class="p">)</span>  <span class="c1"># TODO change default to 1</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mem-per-worker&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;3Gb&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;memory per worker, e.g. &quot;5.67Gb&quot;&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to input dataset&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to input dataset&quot;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">workers</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
+            <span class="n">LocalCluster</span><span class="p">(</span><span class="n">n_workers</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">workers</span><span class="p">,</span> <span class="n">memory_limit</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mem_per_worker</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">dashboard_link</span><span class="p">)</span>
+
+    <span class="c1"># input is read into output dataset, later the actual output will be added</span>
+    <span class="n">out_ds</span> <span class="o">=</span> <span class="n">aris_1go</span><span class="p">(</span><span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">load</span><span class="p">()</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">location</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;debug 1&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">out_ds</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">location</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;debug 2&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="extract_point_data">
+<a class="viewcode-back" href="../aris_lite.html#aris_lite.extract_point_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">extract_point_data</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">locations</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extract data for specific point locations from a dataset.</span>
+
+<span class="sd">    For each location provided, selects the nearest grid point in the dataset and</span>
+<span class="sd">    concatenates the results along a new &#39;location&#39; dimension.</span>
+
+<span class="sd">    :param ds: Input xarray.Dataset.</span>
+<span class="sd">    :type ds: xr.Dataset</span>
+<span class="sd">    :param locations: DataFrame or similar with location names and coordinates.</span>
+<span class="sd">    :type locations: pd.DataFrame or similar</span>
+<span class="sd">    :return: Dataset with data for each specified location.</span>
+<span class="sd">    :rtype: xr.Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">sel</span><span class="p">({</span><span class="o">**</span><span class="n">loc</span><span class="p">},</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">location</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">locations</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;location&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">location</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jan Haacker.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

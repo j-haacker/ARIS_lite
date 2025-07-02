@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aris_lite.yield_expectation &mdash; ARIS_lite  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ARIS_lite
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aris_lite.html">aris_lite package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ARIS_lite</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../aris_lite.html">aris_lite</a></li>
+      <li class="breadcrumb-item active">aris_lite.yield_expectation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aris_lite.yield_expectation</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="sd">&quot;&quot;&quot;Yield module</span>
+
+<span class="sd">Estimates yield based on stress indices. This module provides functions to</span>
+<span class="sd">calculate combined crop stress indices and expected yield based on environmental</span>
+<span class="sd">and crop-specific factors, such as water stress and temperature.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;main_combined_stress&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;main_yield&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;calc_combined_stress&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;calc_yield&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">set_combined_stress_meta</span><span class="p">(</span><span class="n">da</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set metadata for the combined stress index DataArray.</span>
+
+<span class="sd">    This function renames the DataArray to &#39;combined_stress&#39; and assigns descriptive</span>
+<span class="sd">    attributes for units, long name, and description.</span>
+
+<span class="sd">    :param da: DataArray to annotate.</span>
+<span class="sd">    :type da: xr.DataArray</span>
+<span class="sd">    :return: Annotated DataArray with metadata.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">da</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;combined_stress&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">assign_attrs</span><span class="p">(</span>
+        <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="s2">&quot;daily crop specific stress index based on maximum &quot;</span>
+            <span class="s2">&quot;surface air temperature and soil water saturation&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Index of combination of plant growth inhibiting &quot;</span>
+            <span class="s2">&quot;factors. Used for yield estimation.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="calc_combined_stress">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.yield_expectation.calc_combined_stress">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calc_combined_stress</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">threshold_temperature</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the combined stress index for crops.</span>
+
+<span class="sd">    The combined stress index integrates water/drought stress and heat stress</span>
+<span class="sd">    for each crop, applying crop-specific logic and temperature thresholds. The</span>
+<span class="sd">    function processes each crop and time step, applying different rules for</span>
+<span class="sd">    winter wheat, spring barley, maize, potato,</span>
+<span class="sd">    and grassland.</span>
+
+<span class="sd">    :param ds: Dataset containing variables &quot;waterstress&quot;, &quot;max_air_temp&quot;, and</span>
+<span class="sd">        &quot;Kc_factor&quot;.</span>
+<span class="sd">    :type ds: xr.Dataset</span>
+<span class="sd">    :param threshold_temperature: Optional temperature threshold for potato crops.</span>
+<span class="sd">    :type threshold_temperature: float, optional</span>
+<span class="sd">    :return: Combined stress index as a DataArray.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">combined_stress</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">combined_stress</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="c1"># print(combined_stress[i].crop.item(0), combined_stress[i].crop.item(0).__class__, &quot;potato&quot; in combined_stress[i].crop.item(0), flush=True)</span>
+        <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;winter wheat&quot;</span><span class="p">:</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">&gt;</span> <span class="mi">26</span><span class="p">,</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">-</span> <span class="mi">25</span><span class="p">),</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">]:</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">33</span><span class="p">),</span>
+                <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">-</span> <span class="mi">29</span><span class="p">))</span> <span class="o">-</span> <span class="mi">33</span><span class="p">,</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;potato&quot;</span> <span class="ow">in</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># print(threshold_temperature, threshold_temperature.__class__, flush=True)</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                    <span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">&gt;</span> <span class="n">threshold_temperature</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">33</span>
+                <span class="p">),</span>
+                <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">-</span> <span class="p">(</span><span class="n">threshold_temperature</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
+                <span class="o">-</span> <span class="mi">33</span><span class="p">,</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">4</span>
+            <span class="p">)</span>  <span class="c1"># actually 15.4. shouldn&#39;t matter</span>
+        <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;grassland&quot;</span><span class="p">:</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">]:</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;potato&quot;</span> <span class="ow">in</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">):</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;grassland&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">]:</span>
+            <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="n">combined_stress</span> <span class="o">=</span> <span class="n">combined_stress</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">set_combined_stress_meta</span><span class="p">(</span><span class="n">combined_stress</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main_combined_stress">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.yield_expectation.main_combined_stress">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main_combined_stress</span><span class="p">(</span><span class="n">years</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load input data and write combined stress index to Zarr store for specified years.</span>
+
+<span class="sd">    For each year, this function loads the necessary input datasets, computes</span>
+<span class="sd">    the water stress, merges relevant variables, calculates the combined stress</span>
+<span class="sd">    index, and saves the result.</span>
+
+<span class="sd">    :param years: List of years to compute combined stress for.</span>
+<span class="sd">    :type years: Iterable[int]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">TAW</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataarray</span><span class="p">(</span><span class="s2">&quot;../data/input/soil_taw.nc&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">years</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/CSI_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! WARNING: CSI_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr already exists. Skipping.&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating stress index for year&quot;</span><span class="p">,</span> <span class="n">year</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">TAW</span><span class="p">,</span> <span class="s2">&quot;chunks&quot;</span><span class="p">):</span>
+            <span class="n">TAW</span> <span class="o">=</span> <span class="n">TAW</span><span class="o">.</span><span class="n">chunk</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">chunks</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">TAW</span><span class="o">.</span><span class="n">dims</span><span class="p">})</span>
+        <span class="n">waterstress</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">soil_depletion</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="n">TAW</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">&quot;layer&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;waterstress&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">max_air_temp</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/input/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">max_air_temp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;f4&quot;</span><span class="p">)</span>
+        <span class="n">data_collection</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">waterstress</span><span class="p">,</span> <span class="n">max_air_temp</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;f4&quot;</span><span class="p">)]</span>
+        <span class="p">)</span>
+        <span class="n">csi</span> <span class="o">=</span> <span class="n">set_combined_stress_meta</span><span class="p">(</span>
+            <span class="n">data_collection</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span>
+                <span class="n">calc_combined_stress</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="n">data_collection</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;f4&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">csi</span><span class="o">.</span><span class="n">drop_encoding</span><span class="p">()</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/CSI_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a-&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">set_yield_meta</span><span class="p">(</span><span class="n">da</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set metadata for the yield expectation DataArray.</span>
+
+<span class="sd">    This function renames the DataArray to &#39;yield_expectation&#39; and assigns descriptive</span>
+<span class="sd">    attributes for units, long name, and description.</span>
+
+<span class="sd">    :param da: DataArray to annotate.</span>
+<span class="sd">    :type da: xr.DataArray</span>
+<span class="sd">    :return: Annotated DataArray with metadata.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">da</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;yield_expectation&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">assign_attrs</span><span class="p">(</span>
+        <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;t/ha&quot;</span><span class="p">,</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="s2">&quot;Expected yield in tonnes per hectare&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The expected yield given a certain combined stress &quot;</span>
+            <span class="s2">&quot;which is crop specific and bases on water availability &quot;</span>
+            <span class="s2">&quot;and heat above defined thresholds.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="calc_yield">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.yield_expectation.calc_yield">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calc_yield</span><span class="p">(</span><span class="n">csi</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate expected crop yield based on the combined stress index.</span>
+
+<span class="sd">    This function uses crop-specific constants and trends to estimate yield as a</span>
+<span class="sd">    function of the maximum combined stress index over the time dimension.</span>
+
+<span class="sd">    :param csi: Combined stress index DataArray.</span>
+<span class="sd">    :type csi: xr.DataArray</span>
+<span class="sd">    :return: DataArray of expected yield for each crop.</span>
+<span class="sd">    :rtype: xr.DataArray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">const</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+        <span class="p">[</span><span class="mf">6.64</span><span class="p">,</span> <span class="mf">5.11</span><span class="p">,</span> <span class="mf">10.99</span><span class="p">,</span> <span class="mf">87.53</span><span class="p">],</span>
+        <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;crop&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">,</span> <span class="s2">&quot;grassland&quot;</span><span class="p">]},</span>
+    <span class="p">)</span>
+    <span class="n">trend</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">const</span><span class="p">)</span> <span class="o">-</span> <span class="p">[</span><span class="mf">0.000084</span><span class="p">,</span> <span class="mf">0.0002</span><span class="p">,</span> <span class="mf">0.0005</span><span class="p">,</span> <span class="mf">0.0055</span><span class="p">]</span>
+    <span class="c1"># yield_expectation = (const + trend * csi.sum(&quot;time&quot;)).where(</span>
+    <span class="n">yield_expectation</span> <span class="o">=</span> <span class="p">(</span><span class="n">const</span> <span class="o">+</span> <span class="n">trend</span> <span class="o">*</span> <span class="n">csi</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="p">(</span><span class="o">~</span><span class="n">csi</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">set_yield_meta</span><span class="p">(</span><span class="n">yield_expectation</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main_yield">
+<a class="viewcode-back" href="../../aris_lite.html#aris_lite.yield_expectation.main_yield">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main_yield</span><span class="p">(</span><span class="n">years</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load input data and write yield expectations to Zarr store for specified years.</span>
+
+<span class="sd">    For each year, this function loads the combined stress index, computes the</span>
+<span class="sd">    expected yield, and saves the result to the output directory.</span>
+
+<span class="sd">    :param years: List of years to compute yield expectations for.</span>
+<span class="sd">    :type years: Iterable[int]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">years</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/output/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! WARNING: </span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr already exists. Skipping.&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating yield expectation for year&quot;</span><span class="p">,</span> <span class="n">year</span><span class="p">)</span>
+        <span class="n">csi</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/intermediate/CSI_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">decode_coords</span><span class="o">=</span><span class="s2">&quot;all&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">combined_stress</span>
+        <span class="n">yield_expectation</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">csi</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span><span class="n">calc_yield</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="n">csi</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">))</span>
+            <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;yield_expectation&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">assign_attrs</span><span class="p">(</span>
+                <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;t/ha&quot;</span><span class="p">,</span>
+                    <span class="n">long_name</span><span class="o">=</span><span class="s2">&quot;Expected yield in tonnes per hectare&quot;</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The expected yield given a certain combined stress &quot;</span>
+                    <span class="s2">&quot;which is crop specific and bases on water availability and heat &quot;</span>
+                    <span class="s2">&quot;above defined thresholds.&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">yield_expectation</span><span class="o">.</span><span class="n">drop_encoding</span><span class="p">()</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;../data/output/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a-&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main_cli</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Command-line interface for computing stress indices and/or yield expectations.</span>
+
+<span class="sd">    Parses command-line arguments to determine which computations to perform and</span>
+<span class="sd">    for which years. Initializes a Dask cluster for parallel processing, handles</span>
+<span class="sd">    missing data, and manages workflow for stress and yield calculations.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        python yield_expectation.py [-m MODE] [years ...] [--workers N]</span>
+<span class="sd">        [--mem-per-worker SIZE]</span>
+
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;computes stress and/or yield&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--mode&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;stress&quot;</span><span class="p">,</span> <span class="s2">&quot;yield&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="s2">&quot;auto&quot;</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;choose whether to compute stress, yield, or both&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;years&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;*&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2021</span><span class="p">,</span> <span class="mi">2023</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;list years to compute&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;number of dask workers&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mem-per-worker&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;1Gb&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;memory per worker, e.g. &quot;5.67Gb&quot;&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">years</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/CSI_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">years</span>
+        <span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;Stress index is present, assuming you want to have the yield &quot;</span>
+                <span class="s2">&quot;expectations computed.&quot;</span>
+            <span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;yield&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;Stress index is missing for year(s):&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">years</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;../data/intermediate/CSI_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">.zarr&quot;</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Computing these first before estimating the yield.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;both&quot;</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalCluster</span><span class="p">,</span> <span class="n">Client</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting dask&quot;</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
+        <span class="n">LocalCluster</span><span class="p">(</span>
+            <span class="n">n_workers</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">workers</span><span class="p">,</span> <span class="n">memory_limit</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mem_per_worker</span><span class="p">,</span> <span class="n">death_timeout</span><span class="o">=</span><span class="mi">30</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;... access the dashboard at&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="n">dashboard_link</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;stress&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">]:</span>
+            <span class="n">main_combined_stress</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+        <span class="n">main_yield</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">years</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Unable to find group&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">! ERROR: data missing. Verify that the necessary data are available.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Closed dask client</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sucessfully computed </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2"> related variables!</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main_cli</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jan Haacker.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

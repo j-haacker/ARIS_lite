@@ -1,0 +1,382 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aris_lite package &mdash; ARIS_lite  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Documentation of ARIS_lite" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ARIS_lite
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">aris_lite package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#aris_lite.aris_1go"><code class="docutils literal notranslate"><span class="pre">aris_1go()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#aris_lite.extract_point_data"><code class="docutils literal notranslate"><span class="pre">extract_point_data()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aris_lite.phenology">aris_lite.phenology module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.phenology.compute_phenology_variables"><code class="docutils literal notranslate"><span class="pre">compute_phenology_variables()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.phenology.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aris_lite.water_budget">aris_lite.water_budget module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.water_budget.calc_snow"><code class="docutils literal notranslate"><span class="pre">calc_snow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.water_budget.calc_soil_water"><code class="docutils literal notranslate"><span class="pre">calc_soil_water()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.water_budget.main_snow"><code class="docutils literal notranslate"><span class="pre">main_snow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.water_budget.main_soil_water"><code class="docutils literal notranslate"><span class="pre">main_soil_water()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aris_lite.yield_expectation">aris_lite.yield_expectation module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.yield_expectation.calc_combined_stress"><code class="docutils literal notranslate"><span class="pre">calc_combined_stress()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.yield_expectation.calc_yield"><code class="docutils literal notranslate"><span class="pre">calc_yield()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.yield_expectation.main_combined_stress"><code class="docutils literal notranslate"><span class="pre">main_combined_stress()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aris_lite.yield_expectation.main_yield"><code class="docutils literal notranslate"><span class="pre">main_yield()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ARIS_lite</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">aris_lite package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/aris_lite.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-aris_lite">
+<span id="aris-lite-package"></span><h1>aris_lite package<a class="headerlink" href="#module-aris_lite" title="Link to this heading"></a></h1>
+<p>Implementation of the ARIS(_lite) phenology model</p>
+<p>This package provides functions for simulating crop phenology, water budget, and yield
+expectation using environmental and crop-specific data.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.aris_1go">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.</span></span><span class="sig-name descname"><span class="pre">aris_1go</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite.html#aris_1go"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.aris_1go" title="Link to this definition"></a></dt>
+<dd><p>Run the full ARIS-lite workflow on a single dataset.</p>
+<p>This function sequentially applies snow calculation, phenology computation,
+soil water calculation, water stress, combined stress, and yield estimation
+to the input dataset. It is intended for small datasets and returns a merged
+xarray.Dataset with all computed variables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ds</strong> (<em>xr.Dataset</em>) – Input dataset containing meteorological and crop data.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset with all ARIS-lite output variables.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.extract_point_data">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.</span></span><span class="sig-name descname"><span class="pre">extract_point_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">locations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite.html#extract_point_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.extract_point_data" title="Link to this definition"></a></dt>
+<dd><p>Extract data for specific point locations from a dataset.</p>
+<p>For each location provided, selects the nearest grid point in the dataset and
+concatenates the results along a new ‘location’ dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ds</strong> (<em>xr.Dataset</em>) – Input xarray.Dataset.</p></li>
+<li><p><strong>locations</strong> (<em>pd.DataFrame</em><em> or </em><em>similar</em>) – DataFrame or similar with location names and coordinates.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset with data for each specified location.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-aris_lite.phenology">
+<span id="aris-lite-phenology-module"></span><h2>aris_lite.phenology module<a class="headerlink" href="#module-aris_lite.phenology" title="Link to this heading"></a></h2>
+<p>Phenology module</p>
+<p>This module computes the crop coefficients (Kc) and plant heights for different crops
+based on temperature and crop-specific phenological rules. These variables are essential
+for modeling crop growth, water use, and yield.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.phenology.compute_phenology_variables">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.phenology.</span></span><span class="sig-name descname"><span class="pre">compute_phenology_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('winter</span> <span class="pre">wheat',</span> <span class="pre">'spring</span> <span class="pre">barley',</span> <span class="pre">'maize',</span> <span class="pre">'grassland')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="reference internal" href="_modules/aris_lite/phenology.html#compute_phenology_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.phenology.compute_phenology_variables" title="Link to this definition"></a></dt>
+<dd><p>Compute crop coefficients (Kc) and plant heights for specified crops.</p>
+<p>Uses temperature data and crop-specific rules to determine phenological stages,
+then assigns Kc and plant height values accordingly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temperature</strong> (<em>xr.DataArray</em>) – Daily surface air temperature average for one year.</p></li>
+<li><p><strong>crops</strong> (<em>Iterable</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – List of crops to compute phenology for.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset containing Kc_factor and plant_height for each crop.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.phenology.main">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.phenology.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('winter</span> <span class="pre">wheat',</span> <span class="pre">'spring</span> <span class="pre">barley',</span> <span class="pre">'maize',</span> <span class="pre">'grassland')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite/phenology.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.phenology.main" title="Link to this definition"></a></dt>
+<dd><p>Load data, compute phenology variables, and save output for specified years.</p>
+<p>For each year, loads temperature data, computes phenology variables for the given
+crops, and writes the results to a Zarr store.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute.</p></li>
+<li><p><strong>crops</strong> (<em>Iterable</em><em>, </em><em>optional</em>) – List of crops to compute, defaults to (“winter wheat”,
+“spring barley”, “maize”, “grassland”).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-aris_lite.water_budget">
+<span id="aris-lite-water-budget-module"></span><h2>aris_lite.water_budget module<a class="headerlink" href="#module-aris_lite.water_budget" title="Link to this heading"></a></h2>
+<p>Water budget module</p>
+<p>This module computes the snow/rain fraction, snow cover, evapotranspiration,
+and soil water availability for crop modeling. It provides functions to process
+meteorological and crop data to estimate water-related variables critical for
+crop growth and yield estimation.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.water_budget.calc_snow">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">calc_snow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="reference internal" href="_modules/aris_lite/water_budget.html#calc_snow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.water_budget.calc_snow" title="Link to this definition"></a></dt>
+<dd><p>Calculate snowfall, meltwater production, and snow cover over time.</p>
+<p>This function simulates the snow accumulation and melting process based on
+precipitation and temperature data. It returns a dataset with snowfall,
+meltwater production, and snow cover for each time step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ds</strong> (<em>xr.Dataset</em>) – Dataset containing variables “precipitation”, “min_air_temp”,
+“max_air_temp”, and “initial_snowcover”.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset with variables “snowfall”, “meltwater_production”, and “snowcover”.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.water_budget.calc_soil_water">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">calc_soil_water</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="reference internal" href="_modules/aris_lite/water_budget.html#calc_soil_water"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.water_budget.calc_soil_water" title="Link to this definition"></a></dt>
+<dd><p>Calculate evapotranspiration and soil water depletion for crops.</p>
+<p>This function estimates the actual evapotranspiration, crop
+evapotranspiration (ETC), and soil water depletion in different soil layers,
+based on crop coefficients, meteorological data, and soil properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ds</strong> (<em>xr.Dataset</em>) – Dataset containing variables “Kc_factor”, “plant_height”,
+“precipitation”, “wind_speed”, “rel_humidity”, “pot_evapotransp”,
+“snowfall”, and “meltwater_production”.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataset with variables “evapotranspiration”, “evapo_ETC”, and
+“soil_depletion”.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.water_budget.main_snow">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">main_snow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite/water_budget.html#main_snow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.water_budget.main_snow" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write snow-related results to Zarr store.</p>
+<p>For each year, this function loads meteorological data, initializes snow cover,
+computes snowfall and meltwater production, and saves the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.water_budget.main_soil_water">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.water_budget.</span></span><span class="sig-name descname"><span class="pre">main_soil_water</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite/water_budget.html#main_soil_water"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.water_budget.main_soil_water" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write soil water and evapotranspiration results to Zarr store.</p>
+<p>For each year, this function loads the necessary datasets, computes soil water
+depletion and evapotranspiration, and saves the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-aris_lite.yield_expectation">
+<span id="aris-lite-yield-expectation-module"></span><h2>aris_lite.yield_expectation module<a class="headerlink" href="#module-aris_lite.yield_expectation" title="Link to this heading"></a></h2>
+<p>Yield module</p>
+<p>Estimates yield based on stress indices. This module provides functions to
+calculate combined crop stress indices and expected yield based on environmental
+and crop-specific factors, such as water stress and temperature.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.yield_expectation.calc_combined_stress">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">calc_combined_stress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataArray</span></span></span><a class="reference internal" href="_modules/aris_lite/yield_expectation.html#calc_combined_stress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.yield_expectation.calc_combined_stress" title="Link to this definition"></a></dt>
+<dd><p>Calculate the combined stress index for crops.</p>
+<p>The combined stress index integrates water/drought stress and heat stress
+for each crop, applying crop-specific logic and temperature thresholds. The
+function processes each crop and time step, applying different rules for
+winter wheat, spring barley, maize, potato,
+and grassland.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ds</strong> (<em>xr.Dataset</em>) – Dataset containing variables “waterstress”, “max_air_temp”, and
+“Kc_factor”.</p></li>
+<li><p><strong>threshold_temperature</strong> (<em>float</em><em>, </em><em>optional</em>) – Optional temperature threshold for potato crops.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Combined stress index as a DataArray.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.yield_expectation.calc_yield">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">calc_yield</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataArray</span></span></span><a class="reference internal" href="_modules/aris_lite/yield_expectation.html#calc_yield"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.yield_expectation.calc_yield" title="Link to this definition"></a></dt>
+<dd><p>Estimate expected crop yield based on the combined stress index.</p>
+<p>This function uses crop-specific constants and trends to estimate yield as a
+function of the maximum combined stress index over the time dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>csi</strong> (<em>xr.DataArray</em>) – Combined stress index DataArray.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataArray of expected yield for each crop.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.yield_expectation.main_combined_stress">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">main_combined_stress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite/yield_expectation.html#main_combined_stress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.yield_expectation.main_combined_stress" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write combined stress index to Zarr store for specified years.</p>
+<p>For each year, this function loads the necessary input datasets, computes
+the water stress, merges relevant variables, calculates the combined stress
+index, and saves the result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute combined stress for.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aris_lite.yield_expectation.main_yield">
+<span class="sig-prename descclassname"><span class="pre">aris_lite.yield_expectation.</span></span><span class="sig-name descname"><span class="pre">main_yield</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aris_lite/yield_expectation.html#main_yield"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aris_lite.yield_expectation.main_yield" title="Link to this definition"></a></dt>
+<dd><p>Load input data and write yield expectations to Zarr store for specified years.</p>
+<p>For each year, this function loads the combined stress index, computes the
+expected yield, and saves the result to the output directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>years</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – List of years to compute yield expectations for.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Documentation of ARIS_lite" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Jan Haacker.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
