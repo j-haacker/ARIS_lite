@@ -24,12 +24,12 @@ dev = [
     "flit",
     "ruff",
 ]
-doc = [
+docs = [
     "myst_parser",
     "sphinx",
     "sphinx-rtd-theme",
 ]
-all = ["aris_lite[dev,doc]"]
+all = ["aris_lite[dev,docs]"]
 
 [project.scripts]
 aris-1go = "aris_lite.__init__:cli"
