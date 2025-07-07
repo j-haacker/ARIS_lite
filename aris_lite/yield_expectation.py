@@ -63,7 +63,6 @@ def calc_combined_stress(ds: xr.Dataset, threshold_temperature=None) -> xr.DataA
     """
     combined_stress = ds.waterstress.where(False)
     for i in range(combined_stress.shape[0]):
-        # print(combined_stress[i].crop.item(0), combined_stress[i].crop.item(0).__class__, "potato" in combined_stress[i].crop.item(0), flush=True)
         if combined_stress[i].crop == "winter wheat":
             combined_stress[i] = xr.where(
                 ds.max_air_temp > 26,
@@ -77,7 +76,6 @@ def calc_combined_stress(ds: xr.Dataset, threshold_temperature=None) -> xr.DataA
                 ds.waterstress[i],
             ).where(ds.time.dt.month >= 3)
         if "potato" in combined_stress[i].crop.item(0):
-            # print(threshold_temperature, threshold_temperature.__class__, flush=True)
             combined_stress[i] = xr.where(
                 np.logical_and(
                     ds.max_air_temp > threshold_temperature, ds.waterstress[i] > 33
@@ -85,9 +83,7 @@ def calc_combined_stress(ds: xr.Dataset, threshold_temperature=None) -> xr.DataA
                 (ds.waterstress[i] * (ds.max_air_temp - (threshold_temperature - 1)))
                 - 33,
                 ds.waterstress[i],
-            ).where(
-                ds.time.dt.month >= 4
-            )  # actually 15.4. shouldn't matter
+            ).where(ds.time.dt.month >= 4)  # actually 15.4. shouldn't matter
         if combined_stress[i].crop == "grassland":
             combined_stress[i] = ds.waterstress[i]
         if combined_stress[i].crop in ["winter wheat", "spring barley"]:
@@ -306,7 +302,8 @@ def main_cli():
     except (FileNotFoundError,) as err:
         if str(err).startswith("Unable to find group"):
             print(
-                "\n! ERROR: data missing. Verify that the necessary data are available.\n"
+                "\n! ERROR: data missing. Verify that the necessary data are "
+                "available.\n"
             )
             raise
     finally:
