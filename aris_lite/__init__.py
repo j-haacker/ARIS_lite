@@ -78,7 +78,6 @@ def cli():
     :return: None
     """
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
-    from dask.distributed import Client, LocalCluster
     from textwrap import dedent
 
     parser = ArgumentParser(
@@ -106,6 +105,8 @@ def cli():
     args = parser.parse_args()
 
     if args.workers > 1:
+        from dask.distributed import Client, LocalCluster
+
         client = Client(
             LocalCluster(n_workers=args.workers, memory_limit=args.mem_per_worker)
         )
