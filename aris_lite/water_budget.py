@@ -129,12 +129,18 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     incoming_water += ds.meltwater_production
     root_factor = xr.DataArray([0.6, 0.4], coords={"layer": ["top", "sub"]})
     ET0 = ds.pot_evapotransp * root_factor
-    climEff = xr.where(
-        ds.plant_height.isnull(),
-        0,
-        (0.04 * (ds.wind_speed - 2))
-        - (0.004 * (ds.rel_humidity - 45)) * (ds.plant_height / 3) ** 0.3,
-    )  # !! should probably be bounded
+    print(ds.wind_speed.load())
+    climEff = (
+        (0.04 * (ds.wind_speed.clip(1, 6) - 2))
+        - (0.004 * (ds.rel_humidity.clip(20, 80) - 45))
+    ) * (ds.plant_height.clip(max=10).where(ds.plant_height > 0.1, 0) / 3) ** 0.3
+    print(climEff.compute())
+    import matplotlib.pyplot as plt
+
+    climEff.isel(location=0, crop=0).plot()
+    ds.plant_height.isel(location=0, crop=0).plot()
+    plt.show()
+    raise
     Kc_plus_climEff = ds.Kc_factor + climEff
     ETC = ds.Kc_factor * ET0
 

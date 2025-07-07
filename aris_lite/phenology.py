@@ -188,7 +188,11 @@ def build_plant_height_array(
     :return: Plant height DataArray.
     :rtype: xr.DataArray
     """
-    return apply_condition_value_list(plant_height_defs, cumT).fillna(0)
+    return (
+        apply_condition_value_list(plant_height_defs, cumT)
+        .interpolate_na("time", "linear")
+        .fillna(0)
+    )
 
 
 def compute_phenology_variables(
@@ -405,10 +409,15 @@ def compute_phenology_variables(
         # after_EGS = Kc_condition_atom(operator.ge, EGS_date + pd.Timedelta(days=1))
         mid_season = Kc_condition([after_mid_season_start, before_EGS])
         # late_and_end_season = Kc_condition([after_EGS, before_out_season])
-        after_late_end = Kc_condition_atom(
+        before_late_end = Kc_condition_atom(
+            operator.lt, EGS_date + pd.Timedelta(days=15)
+        )
+        mid_and_late = Kc_condition([after_mid_season_start, before_late_end])
+        after_late_season = Kc_condition_atom(
             operator.ge, EGS_date + pd.Timedelta(days=15)
         )
-        end_season = Kc_condition([after_late_end, before_out_season])
+        end_season = Kc_condition([after_late_season, before_out_season])
+        # late_and_end = Kc_condition([after_EGS, before_out_season])
 
         Kc_factor_periods = [
             (before_growing_season, Kc_ini_val),
@@ -423,13 +432,25 @@ def compute_phenology_variables(
         )
 
         if crop in ["winter wheat", "spring barley"]:
-            plant_height_periods = [(mid_season, 1), (after_late_end, 0.2)]
+            plant_height_periods = [
+                (before_growing_season, 0),
+                (mid_and_late, 1),
+                (end_season, 0.2),
+            ]
         elif crop == "maize":
-            plant_height_periods = [(mid_season, 2), (after_late_end, 0.2)]
+            plant_height_periods = [
+                (before_growing_season, 0),
+                (mid_and_late, 2),
+                (end_season, 0.2),
+            ]
         elif "potato" in crop:
-            plant_height_periods = [(mid_season, 0.6), (after_late_end, 0)]
+            plant_height_periods = [
+                (before_growing_season, 0),
+                (mid_and_late, 0.6),
+                (end_season, 0),
+            ]
         elif crop == "grassland":
-            plant_height_periods = [(end_season, 0.2)]
+            plant_height_periods = [(end_season, 0.2)]  # inconsistent with the above
         else:
             raise Exception(
                 "If you see this error, implement plant height for missing crop."
