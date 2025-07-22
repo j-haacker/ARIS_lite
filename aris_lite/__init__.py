@@ -115,11 +115,7 @@ def cli():
     # input is read into output dataset, later the actual output will be added
     out_ds = aris_1go(xr.open_zarr(args.input[0]).load().chunk(location=1))
 
-    print("debug 1", flush=True)
-
     out_ds.chunk(location=-1).to_zarr(args.output[0], mode="w")
-
-    print("debug 2", flush=True)
 
 
 def extract_point_data(ds, locations):
