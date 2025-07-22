@@ -4,7 +4,7 @@ This package provides functions for simulating crop phenology, water budget, and
 expectation using environmental and crop-specific data.
 """
 
-__version__ = "0.1.0.dev1"
+__version__ = "0.1.0.dev2"
 
 __all__ = [
     "aris_1go",
@@ -127,8 +127,8 @@ def extract_point_data(ds, locations):
 
     :param ds: Input xarray.Dataset.
     :type ds: xr.Dataset
-    :param locations: DataFrame or similar with location names and coordinates.
-    :type locations: pd.DataFrame or similar
+    :param locations: DataFrame with location names and coordinates.
+    :type locations: pd.DataFrame
     :return: Dataset with data for each specified location.
     :rtype: xr.Dataset
     """
