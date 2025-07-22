@@ -55,7 +55,7 @@ class Kc_condition_atom:
             if isinstance(self.value, pd.Timestamp):
                 comp_val = self.value.replace(year=years[0])
             else:
-                # self.value is derived from dataset and year does not need to be adapted
+                # self.value is derived from dataset; year does not need to be adapted
                 comp_val = self.value
             return self.comparator(other.time.broadcast_like(other), comp_val)
         else:
@@ -212,9 +212,10 @@ def compute_phenology_variables(
     :return: Dataset containing Kc_factor and plant_height for each crop.
     :rtype: xr.Dataset
     """
-    # all of winter wheat, spring barley, grain maize, potato, soybeans and a grassland (mähwiese)
-    # need to be included
+    # all of winter wheat, spring barley, grain maize, potato, soybeans and
+    # grassland (mähwiese) need to be included
 
+    # TODO search xclim for degree_day_exceedance !
     # TODO CRS should be adopted from coords
 
     Kc_ini_val = 0.4
@@ -276,9 +277,7 @@ def compute_phenology_variables(
                 mid_season_start_cumT = before_growing_season_cumT + 200
                 mid_season_end_cumT = mid_season_start_cumT + 1700
             else:
-                print(
-                    f"! WARNING: requested crop {crop} was not recognized and is skipped."
-                )
+                print(f"! WARNING: requested crop {crop} not recognized; skipped")
                 continue
         elif crop == "grassland":
             # grassland needs to be implemented slightly different
@@ -405,16 +404,16 @@ def compute_phenology_variables(
         EGS_date = EGS_date.where(
             EGS_date > pd.Timestamp(month=3, day=1, year=cumT.time[0].dt.year.values)
         )
-        before_EGS = Kc_condition_atom(operator.lt, EGS_date + pd.Timedelta(days=1))
+        before_EGS = Kc_condition_atom(operator.lt, EGS_date)
         # after_EGS = Kc_condition_atom(operator.ge, EGS_date + pd.Timedelta(days=1))
         mid_season = Kc_condition([after_mid_season_start, before_EGS])
         # late_and_end_season = Kc_condition([after_EGS, before_out_season])
         before_late_end = Kc_condition_atom(
-            operator.lt, EGS_date + pd.Timedelta(days=15)
+            operator.lt, EGS_date + pd.Timedelta(days=14)
         )
         mid_and_late = Kc_condition([after_mid_season_start, before_late_end])
         after_late_season = Kc_condition_atom(
-            operator.ge, EGS_date + pd.Timedelta(days=15)
+            operator.ge, EGS_date + pd.Timedelta(days=14)
         )
         end_season = Kc_condition([after_late_season, before_out_season])
         # late_and_end = Kc_condition([after_EGS, before_out_season])
@@ -570,7 +569,8 @@ def main_cli():
     except (FileNotFoundError,) as err:
         if str(err).startswith("Unable to find group"):
             print(
-                "\n! ERROR: data missing. Verify that the necessary data are available.\n"
+                "\n! ERROR: data missing. Verify that the necessary data are "
+                "available.\n"
             )
             raise
     finally:
