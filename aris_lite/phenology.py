@@ -434,19 +434,19 @@ def compute_phenology_variables(
             plant_height_periods = [
                 (before_growing_season, 0),
                 (mid_and_late, 1),
-                (end_season, 0.2),
+                # (end_season, 0.2),
             ]
         elif crop == "maize":
             plant_height_periods = [
                 (before_growing_season, 0),
                 (mid_and_late, 2),
-                (end_season, 0.2),
+                # (end_season, 0.2),
             ]
         elif "potato" in crop:
             plant_height_periods = [
                 (before_growing_season, 0),
                 (mid_and_late, 0.6),
-                (end_season, 0),
+                # (end_season, 0),
             ]
         elif crop == "grassland":
             plant_height_periods = [(end_season, 0.2)]  # inconsistent with the above
