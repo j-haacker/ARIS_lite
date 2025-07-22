@@ -118,10 +118,20 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     # pot_interc_precip = dask_arr.maximum(
     #     1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp
     # )
-    # below implements the (original) ARIS interception
-    # ! assumes Kc is 1.2 between mid and end season
-    # ! makes irrelevant mistake after end season (=0.13 instead 0.1)
-    pot_interc_precip = ds.Kc_factor / 3
+    # below implements the (original) ARIS interception with and without minimum
+    # pot_interc_precip = dask_arr.maximum(
+    #     (0.4 * ds.plant_height / ds.plant_height.max("time")).where(
+    #         ds.time < (
+    #             ds.plant_height.sel(time=slice(None, None, -1)) > 0
+    #         ).idxmax("time"),
+    #         0.1
+    #     ),
+    #     0.2 * ds.pot_evapotransp,
+    # )
+    pot_interc_precip = (0.4 * ds.plant_height / ds.plant_height.max("time")).where(
+        ds.time < (ds.plant_height.sel(time=slice(None, None, -1)) > 0).idxmax("time"),
+        0.1,
+    )
     liq_precip = ds.precipitation - ds.snowfall
     incoming_water = xr.where(
         pot_interc_precip <= liq_precip, liq_precip - pot_interc_precip, 0
@@ -136,7 +146,7 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     Kc_plus_climEff = ds.Kc_factor + climEff
     ETC = ds.Kc_factor * ET0
 
-    D_r = xr.DataArray(
+    D_r = xr.DataArray(  # soil depletion = missing water
         np.zeros((*Kc_plus_climEff.shape, 2), dtype="float32"),
         dims=[*Kc_plus_climEff.dims, "layer"],
         coords={
@@ -154,7 +164,7 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     ).rename("evapotranspiration")
     for t in incoming_water.time[~incoming_water.time.dt.month.isin([1, 2, 12])].values:
         i = np.argwhere(t == incoming_water.time.values).flatten()[0]
-        p__upper_lim, p__lower_lim = 0.1, 0.8
+        p__lower_lim, p__upper_lim = 0.1, 0.8
         p_T = xr.DataArray(
             [0.55, 0.55, 0.55, 0.6, 0.35, 0.35, 0.35],
             coords={
@@ -169,38 +179,30 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
                 ]
             },
         )
-        p = p_T + (0.04 * (5 - ETC.sel(time=t)))
-        p = xr.where(
-            p < p__lower_lim, p__lower_lim, xr.where(p > p__upper_lim, p__upper_lim, p)
-        )
-        Ks_i = (1 - D_r.isel(time=i - 1) / ds.TAW).values / (1 - p)
-        Ks_i = xr.where(Ks_i < 0, 0, xr.where(Ks_i > 1, 1, Ks_i))
+        p = (p_T + (0.04 * (5 - ETC.sel(time=t)))).clip(p__lower_lim, p__upper_lim)
+        Ks_i = ((1 - D_r.isel(time=i - 1) / ds.TAW).values / (1 - p)).clip(0, 1)
         ET[:, i] = Ks_i * ET0.sel(time=t) * Kc_plus_climEff.sel(time=t)
-        toplayerimbalance = (
-            incoming_water.sel(time=t)
-            - D_r.isel(time=i - 1).squeeze().sel(layer="top")
-            - ET.sel(time=t, layer="top")
+        top_shortage = (  # water in top layer before surplus is released
+            D_r.isel(time=i - 1).squeeze().sel(layer="top")
+            + ET.sel(time=t, layer="top")
+            - incoming_water.sel(time=t)
         )
-        maybe_new_top_layer_value = xr.where(
-            toplayerimbalance < -ds.TAW.sel(layer="top"),
-            ds.TAW.sel(layer="top"),
-            -toplayerimbalance,
+        maybe_new_top_layer_value = top_shortage.where(
+            top_shortage < ds.TAW.sel(layer="top"), ds.TAW.sel(layer="top")
         )
-        DP = xr.where(toplayerimbalance > 0, toplayerimbalance, 0)
-        sublayerimbalance = (
-            DP
-            - D_r.isel(time=i - 1).squeeze().sel(layer="sub")
-            - ET.sel(time=t, layer="sub")
+        DP = (-top_shortage).clip(0)
+        sub_shortage = (
+            D_r.isel(time=i - 1).squeeze().sel(layer="sub")
+            + ET.sel(time=t, layer="sub")
+            - DP
         )
-        maybe_new_sub_layer_value = xr.where(
-            sublayerimbalance < -ds.TAW.sel(layer="sub"),
-            ds.TAW.sel(layer="sub"),
-            -sublayerimbalance,
+        maybe_new_sub_layer_value = sub_shortage.where(
+            sub_shortage < ds.TAW.sel(layer="sub"), ds.TAW.sel(layer="sub")
         )
         potential_depletion = xr.concat(
             [maybe_new_top_layer_value, maybe_new_sub_layer_value], dim="layer"
         )
-        D_r[:, i] = xr.where(potential_depletion < 0, 0, potential_depletion)
+        D_r[:, i] = potential_depletion.clip(0)
     return xr.merge([ET, ETC.rename("evapo_ETC"), D_r])
 
 
@@ -276,15 +278,16 @@ def main_snow(years: Iterable[int]):
             main_ds["initial_snowcover"] = xr.open_zarr(
                 f"../data/intermediate/snow_{year - 1}.zarr"
             ).snowcover.isel(time=-1)
-            # next step is necessary! somehow this `xr.where` changes how the data looks internally
+            # next step is necessary! somehow this `xr.where` changes how the
+            # data looks internally
             main_ds["precipitation"] = xr.where(
                 main_ds.time.dt.month == 7, 0, main_ds.precipitation
             )
         else:
             print(
                 "\n! WARNING: snowcover data for previous year are missing; "
-                "initializing with zero snowcover\n"
-                "consider not using data of this year for computing yield expectations\n"
+                "initializing with zero snowcover\nconsider not using data of this "
+                "year for computing yield expectations\n"
             )
             main_ds["initial_snowcover"] = xr.zeros_like(
                 main_ds.precipitation.isel(time=0)
@@ -361,8 +364,8 @@ def main_cli():
             for year in args.years
         ):
             print(
-                "Snow related variables are present, assuming you mean to have the soil "
-                "part of the water budget computed"
+                "Snow related variables are present, assuming you mean to have the "
+                "soil part of the water budget computed"
             )
             args.mode = "soil"
         else:
@@ -398,7 +401,8 @@ def main_cli():
     except (FileNotFoundError,) as err:
         if str(err).startswith("Unable to find group"):
             print(
-                "\n! ERROR: data missing. Verify that the necessary data are available.\n"
+                "\n! ERROR: data missing. Verify that the necessary data are "
+                "available.\n"
             )
             raise
     finally:
