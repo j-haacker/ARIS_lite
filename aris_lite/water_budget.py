@@ -139,12 +139,18 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     incoming_water += ds.meltwater_production
     root_factor = xr.DataArray([0.6, 0.4], coords={"layer": ["top", "sub"]})
     ET0 = ds.pot_evapotransp * root_factor
+
+    def wind_profile_correction(input_height):
+        # FAO wind profile (2 m reference height)
+        return 4.87 / np.log((67.8 * input_height) - 5.42)
+
+    wind_elev = 10  # m above ground
     climEff = (
-        (0.04 * (ds.wind_speed.clip(1, 6) - 2))
-        - (0.004 * (ds.rel_humidity.clip(20, 80) - 45))
+        (0.04 * ((wind_profile_correction(wind_elev) * ds.wind_speed).clip(1, 6) - 2))
+        - (0.004 * (ds.min_rel_hum.clip(20, 80) - 45))
     ) * (ds.plant_height.clip(max=10).where(ds.plant_height > 0.1, 0) / 3) ** 0.3
     Kc_plus_climEff = ds.Kc_factor + climEff
-    ETC = ds.Kc_factor * ET0
+    ETC = Kc_plus_climEff * ET0
 
     D_r = xr.DataArray(  # soil depletion = missing water
         np.zeros((*Kc_plus_climEff.shape, 2), dtype="float32"),
