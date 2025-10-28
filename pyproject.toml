@@ -11,25 +11,12 @@ license-files = ["LICENSE.txt"]
 dynamic = ["version", "description"]
 dependencies= [
   "dask[complete]",
-  "h5netcdf",
   "numpy",
   "pandas",
   "snowmaus",
-  "xarray",
+  "xarray[accel,io,parallel]",
   "zarr>=3",
 ]
-
-[project.optional-dependencies]
-dev = [
-    "flit",
-    "ruff",
-]
-docs = [
-    "myst_parser",
-    "sphinx",
-    "sphinx-rtd-theme",
-]
-all = ["aris_lite[dev,docs]"]
 
 [project.scripts]
 aris-1go = "aris_lite.__init__:cli"
@@ -39,3 +26,15 @@ aris-calc-yield = "aris_lite.yield_expectation:main_cli"
 
 [tool.ruff.lint]
 select = ["E", "F"]
+
+[dependency-groups]
+dev = [
+    "flit",
+    "pigar",
+    "ruff",
+]
+docs = [
+    "myst_parser",
+    "sphinx",
+    "sphinx-rtd-theme",
+]

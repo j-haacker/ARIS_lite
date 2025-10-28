@@ -98,7 +98,7 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
             dask_arr.zeros(
                 shape=(*ds.Kc_factor.shape, 2),
                 dtype="float",
-                chunks=(-1, -1, 37, 41, 2),
+                chunks=(-1, -1, 37, 41, -1) if ds.Kc_factor.chunks else -1,
             ),
             dims=[*ds.Kc_factor.dims, "layer"],
             coords={
@@ -119,18 +119,13 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
     #     1.875 * ds.Kc_factor - 0.25, 0.2 * ds.pot_evapotransp
     # )
     # below implements the (original) ARIS interception with and without minimum
-    # pot_interc_precip = dask_arr.maximum(
-    #     (0.4 * ds.plant_height / ds.plant_height.max("time")).where(
-    #         ds.time < (
-    #             ds.plant_height.sel(time=slice(None, None, -1)) > 0
-    #         ).idxmax("time"),
-    #         0.1
-    #     ),
-    #     0.2 * ds.pot_evapotransp,
-    # )
-    pot_interc_precip = (0.4 * ds.plant_height / ds.plant_height.max("time")).where(
-        ds.time < (ds.plant_height.sel(time=slice(None, None, -1)) > 0).idxmax("time"),
-        0.1,
+    pot_interc_precip = dask_arr.maximum(
+        (0.4 * ds.plant_height / ds.plant_height.max("time")).where(
+            ds.time
+            < (ds.plant_height.sel(time=slice(None, None, -1)) > 0).idxmax("time"),
+            0.1,
+        ),
+        0.2 * ds.pot_evapotransp,
     )
     liq_precip = ds.precipitation - ds.snowfall
     incoming_water = xr.where(
@@ -187,7 +182,9 @@ def calc_soil_water(ds: xr.Dataset) -> xr.Dataset:
         )
         p = (p_T + (0.04 * (5 - ETC.sel(time=t)))).clip(p__lower_lim, p__upper_lim)
         Ks_i = ((1 - D_r.isel(time=i - 1) / ds.TAW).values / (1 - p)).clip(0, 1)
-        ET[:, i] = Ks_i * ET0.sel(time=t) * Kc_plus_climEff.sel(time=t)
+        ET[:, i] = (
+            ET0.sel(time=t) * Kc_plus_climEff.sel(time=t) * Ks_i
+        )  # Ks_i has to be multiplied after Kc_... because of coord precedence
         top_shortage = (  # water in top layer before surplus is released
             D_r.isel(time=i - 1).squeeze().sel(layer="top")
             + ET.sel(time=t, layer="top")
@@ -328,7 +325,7 @@ def main_cli():
     missing data, and manages workflow for snow and soil water calculations.
 
     Usage:
-        python water_budget.py [-m MODE] [years ...] [--workers N]
+        aris-calc-waterbudget [-m MODE] [years ...] [--workers N]
         [--mem-per-worker SIZE]
 
     :return: None

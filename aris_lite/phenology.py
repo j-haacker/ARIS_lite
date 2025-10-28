@@ -12,6 +12,7 @@ __all__ = [
     "compute_phenology_variables",
 ]
 
+from aris_lite import T_crop_names
 from dask import array as dask_arr
 import numpy as np
 import operator
@@ -39,6 +40,12 @@ class Kc_condition_atom:
     ):
         self.comparator = comparator
         self.value = value
+
+    def __str__(self):
+        return (
+            "Custom condition(comparator: "
+            f"{self.comparator}, reference value: {self.value})"
+        )
 
     @property
     def is_temporal(self) -> bool:
@@ -76,6 +83,14 @@ class Kc_condition:
     def __init__(self, condition_tuple: tuple["Kc_condition_atom"]):
         self.condition_tuple = condition_tuple
 
+    def __str__(self):
+        return "\n".join(
+            [
+                "Custom condition containing condition atoms:",
+                *[str(c) for c in self.condition_tuple],
+            ]
+        )
+
     def compare(self, other: xr.DataArray) -> xr.DataArray:
         # True if all conditions met
         return xr.concat(
@@ -87,23 +102,25 @@ class Kc_condition:
 def conditional_cumulative_temperature(
     temperature: xr.DataArray,
     start_month: int,
-    threshold: float,
-    timesteps_above_threshold: int = 5,
+    basis_temperature: float,
+    start_growing_season: tuple[int, float],
 ) -> xr.DataArray:
     """
-    Calculate cumulative temperature above a threshold, starting from a given month.
+    Calculate cumulative temperature above a threshold.
 
-    Only counts days where the temperature exceeds the threshold for a minimum number
-    of consecutive days. Used to determine phenological stage transitions.
+    Only counts days where the temperature exceeds the basis temperature for a
+    minimum number of consecutive days as specified by start_growing_season.
+    Used to determine phenological stage transitions.
 
     :param temperature: Daily temperature time series (one year).
     :type temperature: xr.DataArray
     :param start_month: Month in which to start counting (1-12).
     :type start_month: int
-    :param threshold: Temperature threshold for counting.
-    :type threshold: float
-    :param timesteps_above_threshold: Minimum consecutive days above threshold.
-    :type timesteps_above_threshold: int, optional
+    :param basis_temperature: Temperature threshold for counting.
+    :type basis_temperature: float
+    :param start_growing_season: Tuple of (minimum consecutive days above threshold,
+        threshold value).
+    :type start_growing_season: tuple[int, float]
     :return: Cumulative temperature above threshold.
     :rtype: xr.DataArray
     """
@@ -114,16 +131,16 @@ def conditional_cumulative_temperature(
             #  threshold
             np.logical_and(
                 temperature.time.dt.month >= start_month,
-                (temperature >= threshold)
+                (temperature >= start_growing_season[1])
                 .isel(time=slice(None, None, -1))
-                .rolling(time=timesteps_above_threshold)
+                .rolling(time=start_growing_season[0])
                 .sum()
-                == timesteps_above_threshold,
+                == start_growing_season[0],
             ).cumsum("time")
             >= 1,  # end
-            temperature >= threshold,
+            temperature >= basis_temperature,
         ),
-        temperature - threshold,
+        temperature - basis_temperature,
         0,
     ).cumsum("time")
 
@@ -153,7 +170,7 @@ def apply_condition_value_list(
 
 def build_Kc_factor_array(
     Kc_factor_defs: Iterable[tuple["Kc_condition", float]],
-    cumT: xr.DataArray,
+    arr: xr.DataArray,
 ) -> xr.DataArray:
     """
     Interpolate Kc factor values based on phenological stage definitions.
@@ -162,19 +179,19 @@ def build_Kc_factor_array(
 
     :param Kc_factor_defs: Iterable of (condition, value) pairs for Kc.
     :type Kc_factor_defs: Iterable[tuple[Kc_condition, float]]
-    :param cumT: Cumulative temperature DataArray.
-    :type cumT: xr.DataArray
+    :param arr: Values DataArray that is compared against conditions.
+    :type arr: xr.DataArray
     :return: Interpolated Kc factor DataArray.
     :rtype: xr.DataArray
     """
-    return apply_condition_value_list(Kc_factor_defs, cumT).interpolate_na(
+    return apply_condition_value_list(Kc_factor_defs, arr).interpolate_na(
         "time", "linear"
     )
 
 
 def build_plant_height_array(
     plant_height_defs: Iterable[tuple["Kc_condition", float]],
-    cumT: xr.DataArray,
+    arr: xr.DataArray,
 ) -> xr.DataArray:
     """
     Assign plant height values based on phenological stage definitions.
@@ -183,13 +200,13 @@ def build_plant_height_array(
 
     :param plant_height_defs: Iterable of (condition, value) pairs for plant height.
     :type plant_height_defs: Iterable[tuple[Kc_condition, float]]
-    :param cumT: Cumulative temperature DataArray.
-    :type cumT: xr.DataArray
+    :param arr: Values DataArray that is compared against conditions.
+    :type arr: xr.DataArray
     :return: Plant height DataArray.
     :rtype: xr.DataArray
     """
     return (
-        apply_condition_value_list(plant_height_defs, cumT)
+        apply_condition_value_list(plant_height_defs, arr)
         .interpolate_na("time", "linear")
         .fillna(0)
     )
@@ -197,7 +214,12 @@ def build_plant_height_array(
 
 def compute_phenology_variables(
     temperature: xr.DataArray,
-    crops: Iterable[str] = ("winter wheat", "spring barley", "maize", "grassland"),
+    crops: Iterable[T_crop_names] = (
+        "winter wheat",
+        "spring barley",
+        "maize",
+        "grassland",
+    ),
 ) -> xr.Dataset:
     """
     Compute crop coefficients (Kc) and plant heights for specified crops.
@@ -211,6 +233,25 @@ def compute_phenology_variables(
     :type crops: Iterable[str], optional
     :return: Dataset containing Kc_factor and plant_height for each crop.
     :rtype: xr.Dataset
+
+    Notes
+    -----
+    The current implementation draws on the three references below
+    (basic idea: [1], parameters and specifications: [2], grass cut
+    days: [3]).
+    [1] Allen, R. G. (Ed.). (2000). Crop evapotranspiration: Guidelines
+        for computing crop water requirements (repr). Food and
+        Agriculture Organization of the United Nations.
+    [2] Eitzinger, J., Daneu, V., Kubu, G., Thaler, S., Trnka, M.,
+        Schaumberger, A., Schneider, S., & Tran, T. M. A. (2024). Grid
+        based monitoring and forecasting system of cropping conditions
+        and risks by agrometeorological indicators in Austria –
+        Agricultural Risk Information System ARIS. Climate Services, 34,
+        100478. https://doi.org/10.1016/j.cliser.2024.100478
+    [3] Schaumberger, A. (2011). Räumliche Modelle zur Vegetations- und
+        Ertragsdynamik im Wirtschaftsgrünland [Dissertation, Graz
+        University of Technology].
+        https://repository.tugraz.at/publications/npc97-y3058.
     """
     # all of winter wheat, spring barley, grain maize, potato, soybeans and
     # grassland (mähwiese) need to be included
@@ -229,28 +270,36 @@ def compute_phenology_variables(
     )
     out_season = Kc_condition_atom(operator.ge, pd.Timestamp(month=12, day=1, year=999))
 
-    cumT_5 = conditional_cumulative_temperature(
-        temperature, start_month=3, threshold=5, timesteps_above_threshold=5
-    )
-    cumT_8 = conditional_cumulative_temperature(
-        temperature, start_month=4, threshold=8, timesteps_above_threshold=5
-    )
-
     Kc_factor_da_list = []
     plant_height_da_list = []
     for crop in crops:
         if crop == "winter wheat":
             mid_season_start_cumT = 350
             mid_season_end_cumT = mid_season_start_cumT + 692
-            cumT = cumT_5
+            cumT = conditional_cumulative_temperature(
+                temperature,
+                start_month=3,
+                basis_temperature=5,
+                start_growing_season=(5, 5),
+            )
         elif crop == "spring barley":
             mid_season_start_cumT = 502
             mid_season_end_cumT = mid_season_start_cumT + 568
-            cumT = cumT_5
+            cumT = conditional_cumulative_temperature(
+                temperature,
+                start_month=3,
+                basis_temperature=5,
+                start_growing_season=(5, 5),
+            )
         elif crop == "maize":
             mid_season_start_cumT = 249
             mid_season_end_cumT = mid_season_start_cumT + 1238
-            cumT = cumT_8
+            cumT = conditional_cumulative_temperature(
+                temperature,
+                start_month=4,
+                basis_temperature=8,
+                start_growing_season=(5, 10),
+            )
         elif crop.startswith("wofost potato"):
             Kc_mid_val = 1.0
             cumT = (
@@ -280,88 +329,161 @@ def compute_phenology_variables(
                 print(f"! WARNING: requested crop {crop} not recognized; skipped")
                 continue
         elif crop == "grassland":
-            # grassland needs to be implemented slightly different
-            # ! cumulative temperature thresholds do not seem to make sense because
-            #   1) 2-cuts require a warmer year than 3-cuts but are only applied in
-            #      colder years
-            #   2) all cut strategies only differ slightly in their end temperature sums
-            Kc_out_val = 0.2
-            Kc_ini_val = 0.4
-            # because the defined thresholds result in no grassland at all, I use
-            # imaginary values for testing
-            # cumTs = [np.cumsum(thresholds) for thresholds in [
-            #     [1170, 1900],
-            #     [770, 1020, 1260],
-            #     [630, 710, 910, 850]
-            # ]]
-            cumTs = [
-                np.cumsum(thresholds)
-                for thresholds in [[870, 800], [770, 820, 860], [630, 710, 710, 750]]
+            """
+            To be consistent with the original ARIS, grassland is
+            implemented following the Dissertation by Schaumberger [1].
+            First: the temperature sums are evaluated at given dates
+            Second: the cutting date is determined based on a predefined
+            temperature sum to time difference mapping
+            The algorithm is complex compared to the earlier crops. For
+            details refer to [1].
+            [1] Schaumberger, A. (2011). Räumliche Modelle zur
+                Vegetations- und Ertragsdynamik im Wirtschaftsgrünland
+                [Dissertation, Graz University of Technology].
+                https://repository.tugraz.at/publications/npc97-y3058.
+
+            """
+            earliest = [
+                [141, 250],
+                [125, 161, 229],
+                [122, 154, 193, 239],
             ]
+            regular = [
+                [168, 274],
+                [148, 206, 271],
+                [139, 181, 227, 277],
+            ]
+            latest = [
+                [200, 307],
+                [177, 260, 301],
+                [155, 225, 269, 305],
+            ]
+            cumTs = [
+                [630, 710],
+                [630, 710, 910],
+                [630, 710, 910, 850],
+            ]
+            cumT = conditional_cumulative_temperature(
+                temperature,
+                start_month=3,
+                basis_temperature=0,
+                start_growing_season=(5, 5),
+            )
+            # Kc and plant height values
+            Kc_ini_val = 0.4
+            Kc_mid_val = 1.2
+            Kc_end_val = 0.9
+            Kc_out_val = 0.4
+            # plH_ini_val = 0
+            plH_mid_val = 0.7
+            plH_end_val = 0.2
+            plH_out_val = 0.2  # debatable choice
+            before_out_season = Kc_condition_atom(
+                operator.lt, pd.Timestamp(month=11, day=1, year=999)
+            )
+            out_season = Kc_condition_atom(
+                operator.ge, pd.Timestamp(month=11, day=1, year=999)
+            )
             group_output_collector = []
             group_output_collector2 = []
             try:
                 for (
                     _,
                     group,
-                ) in cumT_5.groupby_bins(  # FIXME wrap in .map_blocks if chunked
-                    cumT_5.sel(time=f"{cumT_5.time[0].dt.year.values}-11-30"),
-                    [sublist[-1] for sublist in cumTs] + [99999],
+                ) in cumT.groupby_bins(  # FIXME wrap in .map_blocks if chunked
+                    cumT.sel(time=f"{cumT.time[0].dt.year.values}-10-31"),
+                    [sum(sublist) for sublist in cumTs] + [99999],
                 ):
+                    before_growing_season = Kc_condition_atom(
+                        operator.lt,
+                        cumT[(cumT == 0).argmin("time").compute()].time.dt.dayofyear,
+                    )
+                    before_march_first = Kc_condition_atom(
+                        operator.lt,
+                        cumT[:, 0]
+                        .sel(time=f"{cumT.time.dt.year.item(0)}-03-01")
+                        .time.dt.dayofyear.item(0),
+                    )
+                    # init list to define stages dynamically
                     Kc_factor_periods = [
                         (before_growing_season, Kc_ini_val),
-                        (
-                            Kc_condition_atom(
-                                operator.lt, pd.Timestamp(month=3, day=1, year=999)
-                            ),
-                            Kc_out_val,
-                        ),
+                        (before_march_first, Kc_out_val),
                     ]
-                    for cumT_threshold in cumTs.pop(0):
-                        tmp_EGS = group[
-                            (group < cumT_threshold).argmin("time").compute()
-                        ].time
+                    plant_height_periods = [
+                        (before_growing_season, plH_out_val),
+                        (before_march_first, plH_out_val),
+                    ]
+                    # cycle through threshold values
+                    for T_threshold, mid, lower, upper in zip(
+                        cumTs.pop(0), regular.pop(0), earliest.pop(0), latest.pop(0)
+                    ):
+                        lower_fraction_limit = 0.5 if mid < 170 else 0.4
+                        T_sum_ratio = (
+                            group.where(cumT.time.dt.dayofyear == mid).sum("time")
+                            / T_threshold
+                        ).clip(lower_fraction_limit, 2)
+                        cut_doy = xr.where(
+                            T_sum_ratio < 1,  # if smaller 1 then delayed, else earlier
+                            np.round(
+                                upper
+                                - (upper - mid)
+                                * (T_sum_ratio - lower_fraction_limit)
+                                / (1 - lower_fraction_limit)
+                            ).astype("int"),
+                            np.round(mid - (mid - lower) * (T_sum_ratio - 1)).astype(
+                                "int"
+                            ),
+                        )
+                        cond_cut_doy = Kc_condition_atom(operator.eq, cut_doy - 1)
+                        cond_just_after_cut = Kc_condition_atom(operator.eq, cut_doy)
                         Kc_factor_periods.extend(
                             [
-                                (Kc_condition_atom(operator.eq, tmp_EGS), 1.2),
-                                (
-                                    Kc_condition_atom(
-                                        operator.eq, tmp_EGS + pd.Timedelta(days=1)
-                                    ),
-                                    0.4,
-                                ),
+                                (cond_cut_doy, Kc_mid_val),
+                                (cond_just_after_cut, Kc_ini_val),
                             ]
                         )
+                        plant_height_periods.extend(
+                            [
+                                (cond_cut_doy, plH_mid_val),
+                                (cond_just_after_cut, plH_end_val),
+                            ]
+                        )
+                        group = group - group.where(
+                            cumT.time.dt.dayofyear == cut_doy - 1
+                        ).sum("time")
+                    # set end state
+                    # `ge` to match the original ARIS should be `gt`
+                    cond_after_cut = Kc_condition_atom(operator.ge, cut_doy)
                     Kc_factor_periods.extend(
                         [
-                            (
-                                Kc_condition_atom(
-                                    operator.ge, tmp_EGS + pd.Timedelta(days=1)
-                                ),
-                                0.4,
-                            ),
+                            (cond_after_cut, Kc_end_val),
                             (out_season, Kc_out_val),
                         ]
                     )
                     group_output_collector.append(
-                        build_Kc_factor_array(Kc_factor_periods, group)
+                        build_Kc_factor_array(
+                            Kc_factor_periods,
+                            group.time.dt.dayofyear.broadcast_like(group),
+                        )
                     )
-                    end_season = Kc_condition(
+                    plant_height_periods.extend(
                         [
-                            Kc_condition_atom(
-                                operator.ge, tmp_EGS + pd.Timedelta(days=1)
-                            ),
-                            before_out_season,
+                            (cond_after_cut, plH_end_val),
+                            (out_season, plH_out_val),
                         ]
                     )
                     group_output_collector2.append(
-                        build_plant_height_array([(end_season, 0.2)], group)
+                        build_plant_height_array(
+                            plant_height_periods,
+                            group.time.dt.dayofyear.broadcast_like(group),
+                        )
                     )
                 Kc_factor_da_list.append(
                     xr.concat(group_output_collector, group_output_collector[0].dims[1])
                     .sortby(group_output_collector[0].dims[1])
                     .unstack()
-                    .reindex_like(cumT_5)
+                    .reindex_like(cumT)
+                    .assign_coords({coord: vals for coord, vals in cumT.coords.items()})
                     .rename(crop.replace(" ", "_"))
                 )
                 plant_height_da_list.append(
@@ -370,25 +492,22 @@ def compute_phenology_variables(
                     )
                     .sortby(group_output_collector[0].dims[1])
                     .unstack()
-                    .reindex_like(cumT_5)
+                    .reindex_like(cumT)
+                    .assign_coords({coord: vals for coord, vals in cumT.coords.items()})
                     .rename(crop.replace(" ", "_"))
                 )
             except ValueError as err:
                 if str(err).startswith("None of the data falls within bins with edges"):
-                    Kc_factor_da_list.append(
-                        xr.DataArray(np.nan, coords=cumT_5.coords).rename(
-                            crop.replace(" ", "_")
-                        )
-                    )
-                    plant_height_da_list.append(
-                        xr.DataArray(np.nan, coords=cumT_5.coords).rename(
-                            crop.replace(" ", "_")
-                        )
-                    )
+                    for da_list in [Kc_factor_da_list, plant_height_da_list]:
+                        if da_list[-1].name != "grassland":
+                            da_list.append(
+                                xr.DataArray(np.nan, coords=cumT.coords).rename(
+                                    crop.replace(" ", "_")
+                                )
+                            )
                 else:
                     raise err
-            finally:
-                continue
+            continue
         else:
             print(
                 f"! WARNING: requested crop {crop} was not recognized and is skipped."
@@ -471,14 +590,17 @@ def compute_phenology_variables(
         .rename("plant_height")
     )
     out = xr.merge([Kc_factor_da_list, plant_height_da_list])
-    # print(out, flush=True)
-    # raise
     return out
 
 
 def main(
     years: Iterable[int],
-    crops: Iterable = ("winter wheat", "spring barley", "maize", "grassland"),
+    crops: Iterable[T_crop_names] = (
+        "winter wheat",
+        "spring barley",
+        "maize",
+        "grassland",
+    ),
 ):
     """
     Load data, compute phenology variables, and save output for specified years.
@@ -530,7 +652,7 @@ def main_cli():
     calculations.
 
     Usage:
-        python phenology.py [years ...] [--workers N] [--mem-per-worker SIZE]
+        aris-calc-pheno [years ...] [--workers N] [--mem-per-worker SIZE]
 
     :return: None
     """

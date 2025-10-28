@@ -34,7 +34,7 @@ def set_combined_stress_meta(da: xr.DataArray) -> xr.DataArray:
     """
     return da.rename("combined_stress").assign_attrs(
         dict(
-            unit="",
+            units="",
             long_name="daily crop specific stress index based on maximum "
             "surface air temperature and soil water saturation",
             description="Index of combination of plant growth inhibiting "
@@ -137,9 +137,9 @@ def main_combined_stress(years: Iterable[int]):
 
 def set_yield_meta(da: xr.DataArray) -> xr.DataArray:
     """
-    Set metadata for the yield expectation DataArray.
+    Set metadata for the yield depression DataArray.
 
-    This function renames the DataArray to 'yield_expectation' and assigns descriptive
+    This function renames the DataArray to 'yield_depression' and assigns descriptive
     attributes for units, long name, and description.
 
     :param da: DataArray to annotate.
@@ -147,13 +147,13 @@ def set_yield_meta(da: xr.DataArray) -> xr.DataArray:
     :return: Annotated DataArray with metadata.
     :rtype: xr.DataArray
     """
-    return da.rename("yield_expectation").assign_attrs(
+    return da.rename("yield_depression").assign_attrs(
         dict(
-            unit="t/ha",
-            long_name="Expected yield in tonnes per hectare",
-            description="The expected yield given a certain combined stress "
-            "which is crop specific and bases on water availability "
-            "and heat above defined thresholds.",
+            units="%",
+            long_name="Yield depression",
+            description="The yield depression given a certain combined stress which is "
+            "crop specific and bases on water availability and heat above defined "
+            "thresholds.",
         )
     )
 
@@ -170,16 +170,23 @@ def calc_yield(csi: xr.DataArray) -> xr.DataArray:
     :return: DataArray of expected yield for each crop.
     :rtype: xr.DataArray
     """
-    const = xr.DataArray(
+    locally_estimated_max_yield = xr.DataArray(  # "marchfeld" estimates
         [6.64, 5.11, 10.99, 87.53],
         coords={"crop": ["winter wheat", "spring barley", "maize", "grassland"]},
     )
-    trend = xr.zeros_like(const) - [0.000084, 0.0002, 0.0005, 0.0055]
-    # yield_expectation = (const + trend * csi.sum("time")).where(
-    yield_expectation = (const + trend * csi.max("time")).where(
-        (~csi.isnull()).any("time")
-    )
-    return set_yield_meta(yield_expectation)
+    locally_estimated_yield_depression = xr.zeros_like(locally_estimated_max_yield) + [
+        0.000084,
+        0.0002,
+        0.0005,
+        0.0055,
+    ]
+    yield_depression = (
+        100
+        * locally_estimated_yield_depression
+        / locally_estimated_max_yield
+        * csi.cumsum("time")
+    ).clip(max=100)
+    return set_yield_meta(yield_depression.transpose(*csi.dims))
 
 
 def main_yield(years: Iterable[int]):
@@ -227,7 +234,7 @@ def main_cli():
     missing data, and manages workflow for stress and yield calculations.
 
     Usage:
-        python yield_expectation.py [-m MODE] [years ...] [--workers N]
+        aris-calc-yield [-m MODE] [years ...] [--workers N]
         [--mem-per-worker SIZE]
 
     :return: None
