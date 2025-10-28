@@ -34,7 +34,7 @@ dev = [
     "ruff",
 ]
 docs = [
-    "myst_parser",
+    "myst-parser",
     "sphinx",
     "sphinx-rtd-theme",
 ]
