@@ -107,11 +107,13 @@
 <img alt="GitHub License" src="https://img.shields.io/github/license/j-haacker/aris_lite" /></p>
 <section id="aris-lite">
 <h2>ARIS_lite<a class="headerlink" href="#aris-lite" title="Link to this heading"></a></h2>
-<p>ARIS models plant growth based on environmental parameter.</p>
+<p>ARIS models plant growth based on environmental parameter. The model
+draws on the references at the bottom.</p>
 <section id="state">
 <h3>🌱 state<a class="headerlink" href="#state" title="Link to this heading"></a></h3>
-<p>Integral parts are being developed. At this stage you have to expect
-refactoring!</p>
+<p>The model has been validated against the orignal ARIS model. This is not
+a stable software - future changes may break your work, but I will try
+not to.</p>
 </section>
 <section id="usage">
 <h3>🪛 usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h3>
@@ -129,22 +131,15 @@ refactoring!</p>
 Spring Barley, Maize, and Grassland based on the daily air surface
 temperature</p></li>
 <li><p>calculate soil water content and evapotranspiration</p></li>
-<li><p>compute daily crop-specific stress index based on maximum surface air temperature and soil water saturation</p></li>
+<li><p>compute daily crop-specific stress index based on maximum surface air
+temperature and soil water saturation</p></li>
 <li><p>estimate yield expectations based on stress index</p></li>
-</ul>
-</section>
-<section id="coming-soon">
-<h3>🚀 coming soon<a class="headerlink" href="#coming-soon" title="Link to this heading"></a></h3>
-<ul class="simple">
-<li><p>consistent observable names with ECMWF climate scenario data</p></li>
-<li><p>paths and observable names will be modifiable via a config file</p></li>
-<li><p>pipelines and tutorials will be extended</p></li>
 </ul>
 </section>
 <section id="dependencies">
 <h3>🔗 dependencies<a class="headerlink" href="#dependencies" title="Link to this heading"></a></h3>
 <ul class="simple">
-<li><p>view the environment.yml</p></li>
+<li><p>dask, numpy, pandas, snowmaus, xarray, zarr</p></li>
 <li><p>meteorological data</p></li>
 <li><p>soil water capacity data</p></li>
 </ul>
@@ -159,11 +154,27 @@ temperature</p></li>
 <h3>💸 funding<a class="headerlink" href="#funding" title="Link to this heading"></a></h3>
 <p>The implementation of ARIS_lite in Python, this repository, is funded by
 the Austrian Research Promotion Agency (FFG, www.ffg.at) as part of
-CropShift.
+CropShift.</p>
 <a href="https://www.ffg.at/">
 <img src="https://www.ffg.at/sites/default/files/allgemeine_downloads/Logos_2018/FFG_Logo_EN_RGB_1000px.png"
 alt="Logo FFG" style="width:15rem;">
-</a></p>
+</a>
+</section>
+<section id="references">
+<h3>📚 references<a class="headerlink" href="#references" title="Link to this heading"></a></h3>
+<p>[1] Allen, R. G. (Ed.). (2000). Crop evapotranspiration: Guidelines
+for computing crop water requirements (repr). Food and
+Agriculture Organization of the United Nations.
+[2] Eitzinger, J., Daneu, V., Kubu, G., Thaler, S., Trnka, M.,
+Schaumberger, A., Schneider, S., &amp; Tran, T. M. A. (2024). Grid based
+monitoring and forecasting system of cropping conditions and risks
+by agrometeorological indicators in Austria – Agricultural Risk
+Information System ARIS. Climate Services, 34, 1.
+<a class="reference external" href="https://doi.org/10.1016/j.cliser.2024.100478">https://doi.org/10.1016/j.cliser.2024.100478</a>.
+[3] Schaumberger, A. (2011). Räumliche Modelle zur Vegetations- und
+Ertragsdynamik im Wirtschaftsgrünland [Dissertation, Graz University
+of Technology].
+<a class="reference external" href="https://repository.tugraz.at/publications/npc97-y3058">https://repository.tugraz.at/publications/npc97-y3058</a>.</p>
 </section>
 </section>
 </section>

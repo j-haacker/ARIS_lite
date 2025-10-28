@@ -74,7 +74,7 @@
 <span class="sd">expectation using environmental and crop-specific data.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.1.0.dev0&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.2.0.dev0&quot;</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;aris_1go&quot;</span><span class="p">,</span>
@@ -84,12 +84,26 @@
     <span class="s2">&quot;yield_expectation&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="n">T_crop_names</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
+    <span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;maize&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;grassland&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;wofost potato very early&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;wofost potato mid&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;wofost potato late&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 
 
 <div class="viewcode-block" id="aris_1go">
 <a class="viewcode-back" href="../aris_lite.html#aris_lite.aris_1go">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">aris_1go</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">aris_1go</span><span class="p">(</span>
+    <span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">crops</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T_crop_names</span><span class="p">],</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Run the full ARIS-lite workflow on a single dataset.</span>
 
@@ -107,6 +121,14 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">aris_lite.phenology</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_phenology_variables</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">aris_lite.yield_expectation</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_combined_stress</span><span class="p">,</span> <span class="n">calc_yield</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_resample_apply</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="s2">&quot;YE&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">assign_coords</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
+        <span class="p">)</span>
+
     <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
         <span class="p">[</span>
             <span class="n">ds</span><span class="p">,</span>
@@ -120,21 +142,47 @@
     <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
         <span class="p">[</span>
             <span class="n">ds</span><span class="p">,</span>
-            <span class="n">compute_phenology_variables</span><span class="p">(</span>
-                <span class="n">ds</span><span class="o">.</span><span class="n">air_temperature</span><span class="p">,</span>
-                <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">,</span> <span class="s2">&quot;grassland&quot;</span><span class="p">],</span>
+            <span class="p">(</span>
+                <span class="n">xr</span><span class="o">.</span><span class="n">coding</span><span class="o">.</span><span class="n">calendar_ops</span><span class="o">.</span><span class="n">convert_calendar</span><span class="p">(</span>
+                    <span class="n">ds</span><span class="o">.</span><span class="n">air_temperature</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">snowcover</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)),</span> <span class="s2">&quot;gregorian&quot;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">pipe</span><span class="p">(</span>
+                    <span class="n">_load_resample_apply</span><span class="p">,</span>
+                    <span class="n">compute_phenology_variables</span><span class="p">,</span>
+                    <span class="n">crops</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">(),</span>
-            <span class="c1"># [&quot;wofost potato very early&quot;, &quot;wofost potato mid&quot;, &quot;wofost potato late&quot;]</span>
         <span class="p">]</span>
     <span class="p">)</span>
-
-    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">calc_soil_water</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()])</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span>
+                <span class="n">_load_resample_apply</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">calc_soil_water</span><span class="p">,),</span>
+                <span class="n">template</span><span class="o">=</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="n">var</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">broadcast_like</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="p">))</span>
+                        <span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">*</span><span class="n">ds</span><span class="o">.</span><span class="n">Kc_factor</span><span class="o">.</span><span class="n">dims</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+                        <span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">chunks</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;evapotranspiration&quot;</span><span class="p">,</span> <span class="s2">&quot;evapo_ETC&quot;</span><span class="p">,</span> <span class="s2">&quot;soil_depletion&quot;</span><span class="p">]</span>
+                    <span class="p">}</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">chunks</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">persist</span><span class="p">(),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
     <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
         <span class="n">waterstress</span><span class="o">=</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">soil_depletion</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="n">ds</span><span class="o">.</span><span class="n">TAW</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">&quot;layer&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>
     <span class="p">)</span>
     <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">calc_combined_stress</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()])</span>
-    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">calc_yield</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">combined_stress</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">()])</span>
-    <span class="k">return</span> <span class="n">ds</span></div>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">ds</span><span class="p">,</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">combined_stress</span><span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="n">_load_resample_apply</span><span class="p">,</span> <span class="n">calc_yield</span><span class="p">)</span><span class="o">.</span><span class="n">persist</span><span class="p">(),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">da</span><span class="p">:</span> <span class="n">da</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">da</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;f&quot;</span> <span class="k">else</span> <span class="n">da</span><span class="p">)</span></div>
 
 
 
@@ -146,16 +194,15 @@
 <span class="sd">    then runs the full workflow and writes the output dataset.</span>
 
 <span class="sd">    Usage:</span>
-<span class="sd">        python -m aris_lite [--workers N] [--mem-per-worker SIZE] input.zarr output.zarr</span>
+<span class="sd">        aris-1go [--workers N] [--mem-per-worker SIZE] input.zarr output.zarr</span>
 
 <span class="sd">    :return: None</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">argparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArgumentParser</span><span class="p">,</span> <span class="n">RawDescriptionHelpFormatter</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">LocalCluster</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">textwrap</span><span class="w"> </span><span class="kn">import</span> <span class="n">dedent</span>
 
     <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">(</span>
-        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;aris-xxx&quot;</span><span class="p">,</span>  <span class="c1"># TODO add name</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;aris-1go&quot;</span><span class="p">,</span>  <span class="c1"># TODO add name</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="n">dedent</span><span class="p">(</span>
 <span class="w">            </span><span class="sd">&quot;&quot;&quot;Calc all standard ARIS output in a single run</span>
@@ -174,24 +221,21 @@
         <span class="n">default</span><span class="o">=</span><span class="s2">&quot;3Gb&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s1">&#39;memory per worker, e.g. &quot;5.67Gb&quot;&#39;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to input dataset&quot;</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to input dataset&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to input dataset&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to output dataset&quot;</span><span class="p">)</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">workers</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">LocalCluster</span>
+
         <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
             <span class="n">LocalCluster</span><span class="p">(</span><span class="n">n_workers</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">workers</span><span class="p">,</span> <span class="n">memory_limit</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mem_per_worker</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">dashboard_link</span><span class="p">)</span>
 
-    <span class="c1"># input is read into output dataset, later the actual output will be added</span>
     <span class="n">out_ds</span> <span class="o">=</span> <span class="n">aris_1go</span><span class="p">(</span><span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">load</span><span class="p">()</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">location</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;debug 1&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
     <span class="n">out_ds</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="n">location</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;debug 2&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="extract_point_data">
@@ -205,8 +249,8 @@
 
 <span class="sd">    :param ds: Input xarray.Dataset.</span>
 <span class="sd">    :type ds: xr.Dataset</span>
-<span class="sd">    :param locations: DataFrame or similar with location names and coordinates.</span>
-<span class="sd">    :type locations: pd.DataFrame or similar</span>
+<span class="sd">    :param locations: DataFrame with location names and coordinates.</span>
+<span class="sd">    :type locations: pd.DataFrame</span>
 <span class="sd">    :return: Dataset with data for each specified location.</span>
 <span class="sd">    :rtype: xr.Dataset</span>
 <span class="sd">    &quot;&quot;&quot;</span>

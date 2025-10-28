@@ -105,7 +105,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">da</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;combined_stress&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">assign_attrs</span><span class="p">(</span>
         <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
             <span class="n">long_name</span><span class="o">=</span><span class="s2">&quot;daily crop specific stress index based on maximum &quot;</span>
             <span class="s2">&quot;surface air temperature and soil water saturation&quot;</span><span class="p">,</span>
             <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Index of combination of plant growth inhibiting &quot;</span>
@@ -136,7 +136,6 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">combined_stress</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">combined_stress</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-        <span class="c1"># print(combined_stress[i].crop.item(0), combined_stress[i].crop.item(0).__class__, &quot;potato&quot; in combined_stress[i].crop.item(0), flush=True)</span>
         <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;winter wheat&quot;</span><span class="p">:</span>
             <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
                 <span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">&gt;</span> <span class="mi">26</span><span class="p">,</span>
@@ -150,7 +149,6 @@
                 <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
             <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">)</span>
         <span class="k">if</span> <span class="s2">&quot;potato&quot;</span> <span class="ow">in</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">):</span>
-            <span class="c1"># print(threshold_temperature, threshold_temperature.__class__, flush=True)</span>
             <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
                 <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
                     <span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">&gt;</span> <span class="n">threshold_temperature</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">33</span>
@@ -158,9 +156,7 @@
                 <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">max_air_temp</span> <span class="o">-</span> <span class="p">(</span><span class="n">threshold_temperature</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
                 <span class="o">-</span> <span class="mi">33</span><span class="p">,</span>
                 <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-                <span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">4</span>
-            <span class="p">)</span>  <span class="c1"># actually 15.4. shouldn&#39;t matter</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># actually 15.4. shouldn&#39;t matter</span>
         <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="o">==</span> <span class="s2">&quot;grassland&quot;</span><span class="p">:</span>
             <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">waterstress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">combined_stress</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">crop</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">]:</span>
@@ -218,9 +214,9 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">set_yield_meta</span><span class="p">(</span><span class="n">da</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Set metadata for the yield expectation DataArray.</span>
+<span class="sd">    Set metadata for the yield depression DataArray.</span>
 
-<span class="sd">    This function renames the DataArray to &#39;yield_expectation&#39; and assigns descriptive</span>
+<span class="sd">    This function renames the DataArray to &#39;yield_depression&#39; and assigns descriptive</span>
 <span class="sd">    attributes for units, long name, and description.</span>
 
 <span class="sd">    :param da: DataArray to annotate.</span>
@@ -228,13 +224,13 @@
 <span class="sd">    :return: Annotated DataArray with metadata.</span>
 <span class="sd">    :rtype: xr.DataArray</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">da</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;yield_expectation&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">assign_attrs</span><span class="p">(</span>
+    <span class="k">return</span> <span class="n">da</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;yield_depression&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">assign_attrs</span><span class="p">(</span>
         <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;t/ha&quot;</span><span class="p">,</span>
-            <span class="n">long_name</span><span class="o">=</span><span class="s2">&quot;Expected yield in tonnes per hectare&quot;</span><span class="p">,</span>
-            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The expected yield given a certain combined stress &quot;</span>
-            <span class="s2">&quot;which is crop specific and bases on water availability &quot;</span>
-            <span class="s2">&quot;and heat above defined thresholds.&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="s2">&quot;Yield depression&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The yield depression given a certain combined stress which is &quot;</span>
+            <span class="s2">&quot;crop specific and bases on water availability and heat above defined &quot;</span>
+            <span class="s2">&quot;thresholds.&quot;</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="p">)</span>
 
@@ -253,16 +249,23 @@
 <span class="sd">    :return: DataArray of expected yield for each crop.</span>
 <span class="sd">    :rtype: xr.DataArray</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">const</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+    <span class="n">locally_estimated_max_yield</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>  <span class="c1"># &quot;marchfeld&quot; estimates</span>
         <span class="p">[</span><span class="mf">6.64</span><span class="p">,</span> <span class="mf">5.11</span><span class="p">,</span> <span class="mf">10.99</span><span class="p">,</span> <span class="mf">87.53</span><span class="p">],</span>
         <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;crop&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;winter wheat&quot;</span><span class="p">,</span> <span class="s2">&quot;spring barley&quot;</span><span class="p">,</span> <span class="s2">&quot;maize&quot;</span><span class="p">,</span> <span class="s2">&quot;grassland&quot;</span><span class="p">]},</span>
     <span class="p">)</span>
-    <span class="n">trend</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">const</span><span class="p">)</span> <span class="o">-</span> <span class="p">[</span><span class="mf">0.000084</span><span class="p">,</span> <span class="mf">0.0002</span><span class="p">,</span> <span class="mf">0.0005</span><span class="p">,</span> <span class="mf">0.0055</span><span class="p">]</span>
-    <span class="c1"># yield_expectation = (const + trend * csi.sum(&quot;time&quot;)).where(</span>
-    <span class="n">yield_expectation</span> <span class="o">=</span> <span class="p">(</span><span class="n">const</span> <span class="o">+</span> <span class="n">trend</span> <span class="o">*</span> <span class="n">csi</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-        <span class="p">(</span><span class="o">~</span><span class="n">csi</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">set_yield_meta</span><span class="p">(</span><span class="n">yield_expectation</span><span class="p">)</span></div>
+    <span class="n">locally_estimated_yield_depression</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">locally_estimated_max_yield</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span>
+        <span class="mf">0.000084</span><span class="p">,</span>
+        <span class="mf">0.0002</span><span class="p">,</span>
+        <span class="mf">0.0005</span><span class="p">,</span>
+        <span class="mf">0.0055</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">yield_depression</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mi">100</span>
+        <span class="o">*</span> <span class="n">locally_estimated_yield_depression</span>
+        <span class="o">/</span> <span class="n">locally_estimated_max_yield</span>
+        <span class="o">*</span> <span class="n">csi</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="nb">max</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">set_yield_meta</span><span class="p">(</span><span class="n">yield_depression</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">*</span><span class="n">csi</span><span class="o">.</span><span class="n">dims</span><span class="p">))</span></div>
 
 
 
@@ -314,7 +317,7 @@
 <span class="sd">    missing data, and manages workflow for stress and yield calculations.</span>
 
 <span class="sd">    Usage:</span>
-<span class="sd">        python yield_expectation.py [-m MODE] [years ...] [--workers N]</span>
+<span class="sd">        aris-calc-yield [-m MODE] [years ...] [--workers N]</span>
 <span class="sd">        [--mem-per-worker SIZE]</span>
 
 <span class="sd">    :return: None</span>
@@ -389,7 +392,8 @@
     <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Unable to find group&quot;</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">! ERROR: data missing. Verify that the necessary data are available.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">! ERROR: data missing. Verify that the necessary data are &quot;</span>
+                <span class="s2">&quot;available.</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="p">)</span>
             <span class="k">raise</span>
     <span class="k">finally</span><span class="p">:</span>
